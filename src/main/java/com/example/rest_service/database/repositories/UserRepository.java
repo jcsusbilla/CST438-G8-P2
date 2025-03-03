@@ -1,4 +1,4 @@
-package com.example.rest_service.database;
+package com.example.rest_service.database.repositories;
 import com.example.rest_service.database.entities.User;
 import org.springframework.data.repository.CrudRepository;
 
@@ -9,7 +9,7 @@ import java.util.Optional;
 
 // This allows us to initialize an instance of our database
 
-public interface DatabaseRepository extends CrudRepository<User, Integer> {
+public interface UserRepository extends CrudRepository<User, Integer> {
 
     Optional<User> findByEmail(String email);
 

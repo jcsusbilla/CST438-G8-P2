@@ -69,7 +69,7 @@ public class TierListController {
     }
 
 
-    //UPDATE
+    //UPDATE (NEEDS TESTING)
     /**
      * This mapping finds the Tierlist you want to update by id
      * There are three optional parameters to modify here
@@ -108,7 +108,7 @@ public class TierListController {
                 update = true;
             }
 
-            if (update) {
+            if (!update) {
                 return "Update Failed: No parameters selected for change!";
             }
 
@@ -139,7 +139,7 @@ public class TierListController {
                 .orElseThrow(() -> new RuntimeException("Tier List not found with id: " + id));
     }
 
-    // Get TierList by Title
+    // Get TierList by Title (NEEDS TESTING)
     @GetMapping(path = "title/{title}")
     public @ResponseBody TierList getTierListByTitle(@PathVariable String title) {
 
@@ -156,7 +156,7 @@ public class TierListController {
         }
     }
 
-    // Get TierList by Subject
+    // Get TierList by Subject (NEEDS TESTING)
     @GetMapping(path = "subject/{subject}")
     public @ResponseBody TierList getTierListBySubject(@PathVariable String subject) {
         Optional<TierList> tierList = tierListRepository.findBySubject(subject);
