@@ -46,7 +46,8 @@ public class TierListController {
     }
 
 
-    @DeleteMapping(path = "/delete") // Delete by ID
+    // DELETE by id  with request Param
+    @DeleteMapping(path = "/delete")
     public @ResponseBody String deleteTierListByID(@RequestParam Integer id) {
         if (!tierListRepository.existsById(id)) {
             return "Tier List does not exist";
@@ -56,8 +57,7 @@ public class TierListController {
         return "Tier List deleted successfully";
     }
 
-    // Another way to do it with a path parameter
-    // Just experimenting with different ways to use mapping
+    // DELETE by id with PathVariable (i think this is the better way)
     @DeleteMapping(path = "/delete/{id}")
     public @ResponseBody String deleteTierListByPathId(@PathVariable Integer id) {
         if (!tierListRepository.existsById(id)) {
@@ -67,6 +67,64 @@ public class TierListController {
         tierListRepository.deleteById(id);
         return "Tier List deleted successfully";
     }
+
+
+    //UPDATE
+    /**
+     * This mapping finds the Tierlist you want to update by id
+     * There are three optional parameters to modify here
+     *  String: title
+     *  String: subject
+     *  String: date
+     *
+     *  Any or none of these fields may be modified
+     * */
+    @PutMapping(path = "update/{id}")
+    public @ResponseBody String updateTierList(@PathVariable Integer id,
+                                               @RequestParam(required = false) String title,
+                                               @RequestParam(required = false) String subject,
+                                               @RequestParam(required = false) String date) {
+
+        // This checks to see if the tierList id exists. if not optional is empty
+        Optional<TierList> existingTierList = tierListRepository.findById(id);
+
+        if (existingTierList.isPresent()) {
+            TierList tierList = existingTierList.get();
+
+            // keeps track of whether or not an update has been made
+            boolean update = false;
+
+            // Update only if parameter is given in request
+            if (title != null && !title.isEmpty()) {
+                tierList.setTitle(title);
+                update = true;
+            }
+            if (subject != null && !subject.isEmpty()) {
+                tierList.setSubject(subject);
+                update = true;
+            }
+            if (date != null && !date.isEmpty()) {
+                tierList.setWeekStartDate(LocalDate.parse(date));
+                update = true;
+            }
+
+            if (update) {
+                return "Update Failed: No parameters selected for change!";
+            }
+
+
+
+            // Save after the update
+            tierListRepository.save(tierList);
+
+            return "Tier List updated successfully.";
+        } else {
+            throw new RuntimeException("Tier List not found with ID: " + id);
+        }
+    }
+
+
+    ///////////////////// GET REQUESTS ///////////////////////////////////////////////
 
     // GET all TierLists
     @GetMapping(path = "/all")
@@ -81,8 +139,39 @@ public class TierListController {
                 .orElseThrow(() -> new RuntimeException("Tier List not found with id: " + id));
     }
 
+    // Get TierList by Title
+    @GetMapping(path = "title/{title}")
+    public @ResponseBody TierList getTierListByTitle(@PathVariable String title) {
+
+        // optional allows for null checks
+        // if tierList exists then optional contains it
+        // if it doesnt exist optional is empty
+        Optional<TierList> tierList = tierListRepository.findByTitle(title);
+
+        if (tierList.isPresent()) {
+
+            return tierList.get();
+        } else {
+            throw new RuntimeException("Tier List not found with title: " + title);
+        }
+    }
+
+    // Get TierList by Subject
+    @GetMapping(path = "subject/{subject}")
+    public @ResponseBody TierList getTierListBySubject(@PathVariable String subject) {
+        Optional<TierList> tierList = tierListRepository.findBySubject(subject);
+
+        if (tierList.isPresent()) {
+            return tierList.get();
+        } else {
+            throw new RuntimeException("Tier List not found with subject: " + subject);
+        }
+    }
+
+    // Should probably add one to get by date as well
 
 
+    ///////////////////// GET REQUESTS END //////////////////////////////////////////
 
 
 }
