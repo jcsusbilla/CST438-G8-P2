@@ -3,7 +3,7 @@ package com.example.rest_service.database.controllers;
 import com.example.rest_service.database.entities.TierList;
 import com.example.rest_service.database.repositories.TierListRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity;// maybe need this if we decide to pivot from ResponseBody
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -69,7 +69,7 @@ public class TierListController {
     }
 
 
-    //UPDATE (NEEDS TESTING)
+    //UPDATE
     /**
      * This mapping finds the Tierlist you want to update by id
      * There are three optional parameters to modify here

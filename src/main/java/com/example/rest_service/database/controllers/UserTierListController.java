@@ -27,6 +27,7 @@ public class UserTierListController {
     private TierListRepository tierListRepository;
 
     // CREATE MAPPING
+    // Right now I want to see how we could use the http sessions to autopopulate userId with a signed in userID
     @PostMapping(path = "addTierList")
     public @ResponseBody String createUserTierList(@RequestParam Integer userId,
                                                    @RequestParam Integer tierId) {
@@ -59,7 +60,7 @@ public class UserTierListController {
 
     }
 
-    // DELETE MAPPING
+    // DELETE MAPPING by userID
    @DeleteMapping(path= "deleteTierList/{id}")
     public @ResponseBody String deleteUserById (@PathVariable Integer id) {
         Optional<UserTierList> userTierList = userTierListRepository.findById(id);
@@ -73,6 +74,7 @@ public class UserTierListController {
             throw new RuntimeException("Tier List not found with ID: " + id);
         }
    }
+   
 
 
 }
