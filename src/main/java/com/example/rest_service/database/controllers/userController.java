@@ -40,6 +40,14 @@ public class userController {
         if (existingUser.isPresent()) {
             return "Error: Email already exists. Please use a different email.";
         }
+
+        Optional<User> existingUserName = userRepository.findByUserName(user_name);
+
+        if (existingUserName.isPresent()) {
+            return "Error: Username already exists. Please use a different username.";
+        }
+
+
         //Here we create a new user object
         User n = new User();
         n.setUserName(user_name);
@@ -94,7 +102,7 @@ public class userController {
                 return "Incorrect password. Please try again!";
             }
 
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Error: " + e);
             return "Error logging in. Please try again later.";
         }
