@@ -20,10 +20,14 @@ public class TierList {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
 
+    @Column(nullable = false)
     private String title;
+
+    @Column(nullable = false)
     private String subject;
 
     // This may be useful later. Thought I would just add it
+    @Column(nullable = false)
     private LocalDate weekStartDate;
 
     // Constructors

@@ -10,11 +10,11 @@ public class UserTierList {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "tier_list_id")
+    @JoinColumn(name = "tier_list_id", nullable = false)
     private TierList tierList;
 
     public Integer getId() {
