@@ -131,4 +131,21 @@ public class TierRankingController {
     }
 
 
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteRanking(@PathVariable int id) {
+        // THis checks if ranking exists
+        String checkSQL = "SELECT COUNT(*) FROM tier_ranking WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+
+        if (count == null || count == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Ranking not found.");
+        }
+
+        // Deletes ranking
+        String deleteSQL = "DELETE FROM tier_ranking WHERE id = ?";
+        jdbcTemplate.update(deleteSQL, id);
+
+        return ResponseEntity.ok("Ranking deleted successfully.");
+    }
+
 }
