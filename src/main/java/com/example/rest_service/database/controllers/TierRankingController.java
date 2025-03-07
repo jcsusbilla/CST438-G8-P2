@@ -71,5 +71,38 @@ public class TierRankingController {
         return ResponseEntity.ok(rankings);
     }
 
+    @GetMapping("/ranking/{id}")
+    public ResponseEntity<TierRanking> getRankingById(@PathVariable int id) {
+        String sql = """
+                    SELECT tr.id, tr.item, tr.tier, tl.id AS tier_list_id, tl.title AS tier_list_title, tl.subject, tl.week_start_date 
+                    FROM tier_ranking tr
+                    JOIN tier_list tl ON tr.tier_list_id = tl.id
+                    WHERE tr.id = ?
+                    """;
+
+        try {
+
+            TierRanking ranking = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+                TierRanking r = new TierRanking();
+                r.setId(rs.getInt("id"));
+                r.setItem(rs.getString("item"));
+                r.setTier(TierRanking.Tier.valueOf(rs.getString("tier")));
+
+                TierList tierList = new TierList();
+                tierList.setId(rs.getInt("tier_list_id"));
+                tierList.setTitle(rs.getString("tier_list_title"));
+                tierList.setSubject(rs.getString("subject"));
+                tierList.setWeekStartDate(rs.getDate("week_start_date").toLocalDate());
+
+                r.setTierList(tierList);
+                return r;
+            }, id);
+
+            return ResponseEntity.ok(ranking);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+    }
+
 
 }
