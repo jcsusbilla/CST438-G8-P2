@@ -41,5 +41,35 @@ public class TierRankingController {
         return ResponseEntity.ok("Ranking added successfully.");
     }
 
+    //What I used to test this GET http://localhost:8080/tier-rankings/154 (postman)
+    @GetMapping("/{tierListId}")
+    public ResponseEntity<List<TierRanking>> getRanking(@PathVariable int tierListId){
+        String sql = """
+                    SELECT tr.id, tr.item, tr.tier, tl.id AS tier_list_id, tl.title AS tier_list_title, tl.subject AS subject, tl.week_start_date
+                    FROM tier_ranking tr
+                    JOIN tier_list tl ON tr.tier_list_id = tl.id
+                    WHERE tr.tier_list_id = ?
+                    """;
+
+        List<TierRanking> rankings = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            TierRanking ranking = new TierRanking();
+            ranking.setId(rs.getInt("id"));
+            ranking.setItem(rs.getString("item"));
+            ranking.setTier(TierRanking.Tier.valueOf(rs.getString("tier")));
+
+            TierList tierList = new TierList();
+            tierList.setId(rs.getInt("tier_list_id"));
+            tierList.setTitle(rs.getString("tier_list_title"));
+            tierList.setSubject(rs.getString("subject"));
+            tierList.setWeekStartDate(rs.getDate("week_start_date").toLocalDate());
+
+            ranking.setTierList(tierList);
+
+            return ranking;
+        }, tierListId);
+
+        return ResponseEntity.ok(rankings);
+    }
+
 
 }
