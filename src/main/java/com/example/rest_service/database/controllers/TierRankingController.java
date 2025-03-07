@@ -104,5 +104,31 @@ public class TierRankingController {
         }
     }
 
+    //What I used PUT http://localhost:8080/tier-rankings/update/1?item=Zelda+Breath+of+the+Wild&tier=B
+    @PutMapping("/update/{id}")
+    public ResponseEntity<String> updateRanking(@PathVariable int id,
+                                                @RequestParam(required = false) String item,
+                                                @RequestParam(required = false) String tier){
+
+        String checkSQL = "SELECT COUNT(*) FROM tier_ranking WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+
+        if(count == null || count == 0){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Tier List not found.");
+        }
+
+        if(item != null && !item.isEmpty()){
+            String updateItemSQL = "UPDATE tier_ranking SET item = ? WHERE id = ?";
+            jdbcTemplate.update(updateItemSQL, item, id);
+        }
+
+        if(tier != null && !tier.isEmpty()){
+            String updateTierSQL = "UPDATE tier_ranking SET tier = ? WHERE id = ?";
+            jdbcTemplate.update(updateTierSQL, tier, id);
+        }
+
+        return ResponseEntity.ok("Ranking updated successfully.");
+    }
+
 
 }
