@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 @Entity
 public class UserTierList {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @ManyToOne

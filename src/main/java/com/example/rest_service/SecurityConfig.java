@@ -29,6 +29,11 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers("/user/oauth2/google")
+
+                        // was getting 403 forbidden while trying to test new post routes
+                        // right now i need to manually ignore any post requests I want to test.
+                        .ignoringRequestMatchers("/tierlists/add")
+                        .ignoringRequestMatchers("/userTierLists/add")
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/user/oauth2/google").authenticated()

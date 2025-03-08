@@ -24,9 +24,9 @@ public class UserTierListController {
     @Autowired
     private UserTierListRepository userTierListRepository;
     @Autowired
-    private UserRepository databaseRepository;
-    @Autowired
     private TierListRepository tierListRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     // CREATE MAPPING
     // Right now I want to see how we could use the http sessions to autopopulate userId with a signed in userID
@@ -35,7 +35,7 @@ public class UserTierListController {
                                                                    @RequestParam Integer tierId) {
 
         // First, we need to get the userId and tier ID
-        Optional<User> user = databaseRepository.findById(userId);
+        Optional<User> user = userRepository.findById(userId);
         Optional<TierList> tierList = tierListRepository.findById(tierId);
 
         // All the conditions this could fail (except an identical userId/tierID, which still needs handling)
