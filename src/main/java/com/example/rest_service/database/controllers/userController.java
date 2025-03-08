@@ -70,7 +70,7 @@ public class userController {
 
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/core/user/OAuth2User.html
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/core/annotation/AuthenticationPrincipal.html
-    // this path now simply handles logging in a user after authentication. 
+    // this path now simply handles logging in a user after authentication.
     @PostMapping("/oauth2/google")
     public @ResponseBody String googleLogin(@AuthenticationPrincipal OAuth2User user, HttpSession session) {
         if (user == null) {
