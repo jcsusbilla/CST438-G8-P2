@@ -79,6 +79,15 @@ public class userController {
         // we can get other attributes but right now im just checking email
         // ie googleId = .getAttribute("sub"),
         String email = user.getAttribute("email");  // User email
+        String firstName = user.getAttribute("given_name");
+        String lastName = user.getAttribute("family_name");
+
+        String username = user.getAttribute("user_name");
+
+        // Included this in case email account does not have the name fields requested
+        if (username == null || username.isEmpty()) {
+            username = email.split("@")[0];
+        }
 
         // Check if the user already exists in the database using email
         Optional<User> existingUser = userRepository.findByEmail(email);
@@ -92,7 +101,20 @@ public class userController {
             return "Google Login Successful! Welcome " + userFromDb.getUserName();
         } else {
 
-            return "User not found in the database. Please sign up first.";
+            // if user is not present we want to create a new Account for the email address
+            User newUser = new User();
+            newUser.setUserName(username);
+            newUser.setEmail(email);
+            newUser.setFirstName(firstName);
+            newUser.setLastName(lastName);
+
+            // creating a dummy password for user (even though login is handled by oauth
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+            newUser.setPassword(encoder.encode("oauth_dummy_password"));
+
+            userRepository.save(newUser);
+
+            return "Account Created Successfully!";
         }
     }
 
