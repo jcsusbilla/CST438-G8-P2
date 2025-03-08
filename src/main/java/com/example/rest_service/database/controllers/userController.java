@@ -5,7 +5,9 @@ import com.example.rest_service.database.entities.User;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,6 +67,33 @@ public class userController {
         userRepository.save(n);
         return "User registered successfully!";
     }
+
+    // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/core/user/OAuth2User.html
+    // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/core/annotation/AuthenticationPrincipal.html
+    // this path now simply handles logging in a user after authentication.
+    @PostMapping("/oauth2/google")
+    public @ResponseBody String googleLogin(@AuthenticationPrincipal OAuth2User user, HttpSession session) {
+        if (user == null) {
+            return "Error: Unable to authenticate with Google.";
+        }
+
+        String email = user.getAttribute("email");
+        // Check if the user already exists in the database using email. This is kind of redundant since a user will be
+        // I want to get the attributes from the actual database because a googleOAuth user may have changed their
+        // userName. If i just took the info from user.getAttribute("userName") it may not match anymore.
+        Optional<User> existingUser = userRepository.findByEmail(email);
+
+        if (existingUser.isPresent()) {
+            User userFromDb = existingUser.get();
+            session.setAttribute("userEmail", userFromDb.getEmail());
+            session.setAttribute("userName", userFromDb.getUserName());
+            session.setAttribute("isLoggedIn", true);
+            return "Google Login Successful! Welcome " + userFromDb.getUserName();
+        }
+
+        return "Error: Unable to authenticate with Google.";
+    }
+
 
     //Just for my reference queryForMap() is only for 1 row. queryForList() is for multiple queries
     @PostMapping("/login") //This is the route for user login

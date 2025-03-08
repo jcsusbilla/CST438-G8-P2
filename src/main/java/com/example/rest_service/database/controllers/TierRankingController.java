@@ -13,4 +13,5 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/tierrankings")
 public class TierRankingController {
+
 }
