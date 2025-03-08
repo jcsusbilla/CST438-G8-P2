@@ -70,52 +70,28 @@ public class userController {
 
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/core/user/OAuth2User.html
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/core/annotation/AuthenticationPrincipal.html
+    // this path now simply handles logging in a user after authentication. 
     @PostMapping("/oauth2/google")
     public @ResponseBody String googleLogin(@AuthenticationPrincipal OAuth2User user, HttpSession session) {
         if (user == null) {
             return "Error: Unable to authenticate with Google.";
         }
 
-        // we can get other attributes but right now im just checking email
-        // ie googleId = .getAttribute("sub"),
-        String email = user.getAttribute("email");  // User email
-        String firstName = user.getAttribute("given_name");
-        String lastName = user.getAttribute("family_name");
-
-        String username = user.getAttribute("user_name");
-
-        // Included this in case email account does not have the name fields requested
-        if (username == null || username.isEmpty()) {
-            username = email.split("@")[0];
-        }
-
-        // Check if the user already exists in the database using email
+        String email = user.getAttribute("email");
+        // Check if the user already exists in the database using email. This is kind of redundant since a user will be
+        // I want to get the attributes from the actual database because a googleOAuth user may have changed their
+        // userName. If i just took the info from user.getAttribute("userName") it may not match anymore.
         Optional<User> existingUser = userRepository.findByEmail(email);
 
         if (existingUser.isPresent()) {
-            // if userisFound log them in (copying logic from base/login)
             User userFromDb = existingUser.get();
             session.setAttribute("userEmail", userFromDb.getEmail());
             session.setAttribute("userName", userFromDb.getUserName());
             session.setAttribute("isLoggedIn", true);
             return "Google Login Successful! Welcome " + userFromDb.getUserName();
-        } else {
-
-            // if user is not present we want to create a new Account for the email address
-            User newUser = new User();
-            newUser.setUserName(username);
-            newUser.setEmail(email);
-            newUser.setFirstName(firstName);
-            newUser.setLastName(lastName);
-
-            // creating a dummy password for user (even though login is handled by oauth
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-            newUser.setPassword(encoder.encode("oauth_dummy_password"));
-
-            userRepository.save(newUser);
-
-            return "Account Created Successfully!";
         }
+
+        return "Error: Unable to authenticate with Google.";
     }
 
 
