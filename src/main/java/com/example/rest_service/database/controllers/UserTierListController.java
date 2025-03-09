@@ -12,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @RestController()
@@ -75,6 +78,36 @@ public class UserTierListController {
                     .body("Tier List not found with ID: " + id);
         }
     }
+
+    @GetMapping
+    public @ResponseBody Iterable<UserTierList> getAllUserTierLists() {
+        return userTierListRepository.findAll();
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Iterable<TierList>> getUserTierListsByUserId(@PathVariable Integer userId) {
+
+        // Get the list of UserTierList objects associated with the user
+        List<UserTierList> userTierLists = userTierListRepository.findByUserId(userId);
+
+        // check if the list is empty
+        if (userTierLists == null || userTierLists.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Collections.emptyList());
+        }
+
+        // create a new list
+        List<TierList> tierLists = new ArrayList<>();
+        for (UserTierList userTierList : userTierLists) {
+            tierLists.add(userTierList.getTierList());
+        }
+
+        // Return a successful response with the  TierLists
+        return ResponseEntity.ok(tierLists);
+    }
+
+
+
 
 
 }
