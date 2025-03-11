@@ -66,6 +66,9 @@ public class TierList {
     public void setWeekStartDate(LocalDate weekStartDate) {
         this.weekStartDate = weekStartDate;
     }
+
+    public void setId(int tierListId) {
+    }
 }
 
 
