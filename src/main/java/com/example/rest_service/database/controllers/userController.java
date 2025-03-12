@@ -31,7 +31,8 @@ public class userController {
      * This method takes in a name, email, and password and saves a new user into the database.
      * Here we hash the password before we save, so that it's not store in plain text.
      */
-    @PostMapping(path = "/add") // Map ONLY POST Requests
+//    @PostMapping(path = "/add") // Map ONLY POST Requests
+    @PostMapping("/register")
     public @ResponseBody String addNewUser(@RequestParam String user_name,
                                            @RequestParam String email,
                                            @RequestParam String password,
