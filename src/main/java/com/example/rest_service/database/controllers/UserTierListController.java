@@ -8,8 +8,13 @@ import com.example.rest_service.database.repositories.TierListRepository;
 import com.example.rest_service.database.repositories.UserTierListRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @RestController()
@@ -22,59 +27,87 @@ public class UserTierListController {
     @Autowired
     private UserTierListRepository userTierListRepository;
     @Autowired
-    private UserRepository databaseRepository;
-    @Autowired
     private TierListRepository tierListRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     // CREATE MAPPING
     // Right now I want to see how we could use the http sessions to autopopulate userId with a signed in userID
-    @PostMapping(path = "addTierList")
-    public @ResponseBody String createUserTierList(@RequestParam Integer userId,
-                                                   @RequestParam Integer tierId) {
+    @PostMapping(path = "add")
+    public @ResponseBody ResponseEntity<String> createUserTierList(@RequestParam Integer userId,
+                                                                   @RequestParam Integer tierId) {
 
-        //first we need to get the userId and tier ID
-        Optional<User> user = databaseRepository.findById(userId);
+        // First, we need to get the userId and tier ID
+        Optional<User> user = userRepository.findById(userId);
         Optional<TierList> tierList = tierListRepository.findById(tierId);
 
-
-        // All the conditions this could fail (except an identical userId/tierID entry)
-        // Probably need a helper function to check the exception missing from this logic
+        // All the conditions this could fail (except an identical userId/tierID, which still needs handling)
         if (user.isEmpty() && tierList.isEmpty()) {
-            return "User and Tier List not found.";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("User and Tier List not found.");
         } else if (user.isEmpty()) {
-            return "User not found with ID: " + userId;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("User not found with ID: " + userId);
         } else if (tierList.isEmpty()) {
-            return "Tier List not found with ID: " + tierId;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Tier List not found with ID: " + tierId);
         }
 
-
-        // If it doesn't fail the above conditions add it
+        // If it doesn't fail the above conditions, add it
         UserTierList newUserTierList = new UserTierList();
         newUserTierList.setUser(user.get());
         newUserTierList.setTierList(tierList.get());
 
-
-        // save the newUserTierList and return
+        // Save the newUserTierList
         userTierListRepository.save(newUserTierList);
-        return "UserTierList created successfully.";
-
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body("UserTierList created successfully.");
     }
 
-    // DELETE MAPPING by userID
-   @DeleteMapping(path= "deleteTierList/{id}")
-    public @ResponseBody String deleteUserById (@PathVariable Integer id) {
+
+    @DeleteMapping(path = "delete/{id}")
+    public ResponseEntity<String> deleteUserById(@PathVariable Integer id) {
         Optional<UserTierList> userTierList = userTierListRepository.findById(id);
 
         if (userTierList.isPresent()) {
             userTierListRepository.delete(userTierList.get());
-            return "UserTierList deleted successfully.";
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("UserTierList deleted successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Tier List not found with ID: " + id);
+        }
+    }
+
+    @GetMapping
+    public @ResponseBody Iterable<UserTierList> getAllUserTierLists() {
+        return userTierListRepository.findAll();
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Iterable<TierList>> getUserTierListsByUserId(@PathVariable Integer userId) {
+
+        // Get the list of UserTierList objects associated with the user
+        List<UserTierList> userTierLists = userTierListRepository.findByUserId(userId);
+
+        // check if the list is empty
+        if (userTierLists == null || userTierLists.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Collections.emptyList());
         }
 
-        else{
-            throw new RuntimeException("Tier List not found with ID: " + id);
+        // create a new list
+        List<TierList> tierLists = new ArrayList<>();
+        for (UserTierList userTierList : userTierLists) {
+            tierLists.add(userTierList.getTierList());
         }
-   }
-   
+
+        // Return a successful response with the  TierLists
+        return ResponseEntity.ok(tierLists);
+    }
+
+
+
 
 
 }
