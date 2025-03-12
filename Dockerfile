@@ -5,7 +5,6 @@ WORKDIR /workspace/app
 # Copy gradle/maven files for dependency resolution
 COPY gradle gradle
 COPY build.gradle settings.gradle gradlew ./
-# OR for Maven: COPY pom.xml mvnw ./
 
 # Download dependencies
 RUN ./gradlew dependencies
