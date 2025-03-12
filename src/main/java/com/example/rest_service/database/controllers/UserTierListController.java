@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController()
-@RequestMapping(path = "/userTierLists")
+@RequestMapping(path = "/user-tier-lists")
 public class UserTierListController {
 
     // Most likely need access to all repositories for any advanced queries.
@@ -34,50 +34,46 @@ public class UserTierListController {
     // CREATE MAPPING
     // Right now I want to see how we could use the http sessions to autopopulate userId with a signed in userID
     @PostMapping(path = "add")
-    public @ResponseBody ResponseEntity<String> createUserTierList(@RequestParam Integer userId,
-                                                                   @RequestParam Integer tierId) {
-
-        // First, we need to get the userId and tier ID
-        Optional<User> user = userRepository.findById(userId);
-        Optional<TierList> tierList = tierListRepository.findById(tierId);
-
-        // All the conditions this could fail (except an identical userId/tierID, which still needs handling)
-        if (user.isEmpty() && tierList.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User and Tier List not found.");
-        } else if (user.isEmpty()) {
+    public ResponseEntity<String> createUserTierList(@RequestParam Integer userId,
+                                                     @RequestParam Integer tierId) {
+        // Check if user and tier list exist
+        if (!userRepository.existsById(userId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("User not found with ID: " + userId);
-        } else if (tierList.isEmpty()) {
+        }
+        if (!tierListRepository.existsById(tierId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Tier List not found with ID: " + tierId);
         }
 
-        // If it doesn't fail the above conditions, add it
-        UserTierList newUserTierList = new UserTierList();
-        newUserTierList.setUser(user.get());
-        newUserTierList.setTierList(tierList.get());
+        // Check if the UserTierList already exists
+        if (userTierListRepository.findByUserIdAndTierListId(userId, tierId).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("User is already assigned to this Tier List.");
+        }
 
-        // Save the newUserTierList
+        // Create and save the new UserTierList
+        UserTierList newUserTierList = new UserTierList();
+        newUserTierList.setUser(userRepository.getReferenceById(userId));
+        newUserTierList.setTierList(tierListRepository.getReferenceById(tierId));
+
         userTierListRepository.save(newUserTierList);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("UserTierList created successfully.");
     }
 
 
-    @DeleteMapping(path = "delete/{id}")
-    public ResponseEntity<String> deleteUserById(@PathVariable Integer id) {
-        Optional<UserTierList> userTierList = userTierListRepository.findById(id);
-
-        if (userTierList.isPresent()) {
-            userTierListRepository.delete(userTierList.get());
-            return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                    .body("UserTierList deleted successfully.");
-        } else {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteUserTierList(@PathVariable Integer id) {
+        if (!userTierListRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Tier List not found with ID: " + id);
+                    .body("UserTierList not found with ID: " + id);
         }
+
+        userTierListRepository.deleteById(id);
+        return ResponseEntity.ok("UserTierList deleted successfully.");
     }
+
 
     @GetMapping
     public @ResponseBody Iterable<UserTierList> getAllUserTierLists() {
@@ -105,9 +101,6 @@ public class UserTierListController {
         // Return a successful response with the  TierLists
         return ResponseEntity.ok(tierLists);
     }
-
-
-
 
 
 }

@@ -9,4 +9,6 @@ public interface TierListRepository extends CrudRepository<TierList, Integer> {
     Optional<TierList> findByTitle(String title);
 
     Optional<TierList> findBySubject(String subject);
+
+    TierList getReferenceById(Integer tierId);
 }
