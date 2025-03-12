@@ -10,5 +10,7 @@ public interface UserTierListRepository extends CrudRepository<UserTierList, Int
 
     List<UserTierList> findByUserId(Integer userId);
 
-    Optional<Object> findByUserIdAndTierListId(Integer userId, Integer tierId);
+    Optional<UserTierList> findByUserIdAndTierListId(Integer userId, Integer tierId);
+
+    List<UserTierList> findByTierListId(Integer tierId);
 }

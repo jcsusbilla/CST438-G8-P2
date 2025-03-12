@@ -1,5 +1,7 @@
 package com.example.rest_service.database.controllers;
 
+import com.example.rest_service.database.entities.TierRanking;
+import com.example.rest_service.database.repositories.TierRankingRepository;
 import com.example.rest_service.database.repositories.UserRepository;
 import com.example.rest_service.database.entities.TierList;
 import com.example.rest_service.database.entities.User;
@@ -30,6 +32,8 @@ public class UserTierListController {
     private TierListRepository tierListRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private TierRankingRepository tierRankingRepository;
 
     // CREATE MAPPING
     // Right now I want to see how we could use the http sessions to autopopulate userId with a signed in userID
@@ -73,13 +77,15 @@ public class UserTierListController {
         userTierListRepository.deleteById(id);
         return ResponseEntity.ok("UserTierList deleted successfully.");
     }
+///////////////////////////////// GET MAPPINGS ////////////////////////////////////////
 
-
+    // This route is for testing purposes and should not be accessible to non-admins.
     @GetMapping
     public @ResponseBody Iterable<UserTierList> getAllUserTierLists() {
         return userTierListRepository.findAll();
     }
 
+    // Get Tier List by user ID (This is a helpful route for looking at all of a User's past or stored tier lists
     @GetMapping("/user/{userId}")
     public ResponseEntity<Iterable<TierList>> getUserTierListsByUserId(@PathVariable Integer userId) {
 
@@ -100,6 +106,51 @@ public class UserTierListController {
 
         // Return a successful response with the  TierLists
         return ResponseEntity.ok(tierLists);
+    }
+
+
+    // All rankings for all tierLists associated with user
+    @GetMapping("/user/{userId}/tier-rankings")
+    public ResponseEntity<List<TierRanking>> getTierRankingsByUserId(@PathVariable Integer userId) {
+        List<UserTierList> userTierLists = userTierListRepository.findByUserId(userId);
+
+        if (userTierLists.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.emptyList());
+        }
+
+        List<TierRanking> tierRankings = new ArrayList<>();
+        for (UserTierList userTierList : userTierLists) {
+            List<TierRanking> rankings = tierRankingRepository.findByTierListId(userTierList.getTierList().getId());
+            tierRankings.addAll(rankings);
+        }
+
+        return ResponseEntity.ok(tierRankings);
+    }
+
+    // rankings of specific tier list with specific id
+    @GetMapping("/user/{userId}/tier-list/{tierListId}/tier-rankings")
+    public ResponseEntity<List<TierRanking>> getTierRankingsByUserAndTierList(
+            @PathVariable Integer userId,
+            @PathVariable Integer tierListId) {
+
+        Optional<UserTierList> userTierList = userTierListRepository.findByUserIdAndTierListId(userId, tierListId);
+
+        if (userTierList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.emptyList());
+        }
+
+        List<TierRanking> rankings = tierRankingRepository.findByTierListId(tierListId);
+        return ResponseEntity.ok(rankings);
+    }
+
+
+    // Get UserTierList by the UserTierListID (standard get by ID)
+    @GetMapping("/{id}")
+    public ResponseEntity<UserTierList> getUserTierListById(@PathVariable Integer id) {
+        return userTierListRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(null));
     }
 
 
