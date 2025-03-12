@@ -33,8 +33,8 @@ public class userController {
     public @ResponseBody String addNewUser(@RequestParam String user_name,
                                            @RequestParam String email,
                                            @RequestParam String password,
-                                           @RequestParam String first_name,
-                                           @RequestParam String last_name) {
+                                           @RequestParam (required = false) String first_name,
+                                           @RequestParam (required = false) String last_name) {
 
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
