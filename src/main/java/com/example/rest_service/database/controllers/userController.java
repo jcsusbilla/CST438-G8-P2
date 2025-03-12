@@ -23,6 +23,8 @@ public class userController {
     //JPA
     private UserRepository userRepository; // For my reference this is to talk to the database. If I'm not wrong
 
+    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @Autowired
     private JdbcTemplate jdbcTemplate; //This adds the jdbcTemplate that allows for raw SQL Queries
 
@@ -50,7 +52,6 @@ public class userController {
             return "Error: Username already exists. Please use a different username.";
         }
 
-
         //Here we create a new user object
         User n = new User();
         n.setUserName(user_name);
@@ -63,6 +64,8 @@ public class userController {
         String hashedPassword = encoder.encode(password);
 
         n.setPassword(hashedPassword); //Here we are now using the new secure password.
+
+        n.setRole(User.Role.USER);
 
         //Here we save the User into the database.
         userRepository.save(n);
@@ -99,7 +102,7 @@ public class userController {
     //Just for my reference queryForMap() is only for 1 row. queryForList() is for multiple queries
     @PostMapping("/login") //This is the route for user login
     public @ResponseBody String loginUser(@RequestParam String email, @RequestParam String password, HttpSession session) {
-        String sql = "SELECT id, user_name, password, first_name, last_name FROM user WHERE email = ?";
+        String sql = "SELECT id, user_name, password, first_name, last_name, role FROM user WHERE email = ?";
 
         try {
             //This executes the SQL query using the "queryForMap()"
@@ -121,13 +124,16 @@ public class userController {
             String hashedPassword = (String) userData.get("password");
             String firstName = (String) userData.get("first_name");
             String lastName = (String) userData.get("last_name");
+            String role = (String) userData.get("role"); //This is to get the user role
+
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
             if (encoder.matches(password, hashedPassword)) {
                 session.setAttribute("userEmail", email);
                 session.setAttribute("userName", userName);
+                session.setAttribute("userRole", role);
                 session.setAttribute("isLoggedIn", true);
-                return "Login successful! Welcome " + userName;
+                return "Login successful! Welcome " + userName + " (Role: " + role + ")";
             } else {
                 return "Incorrect password. Please try again!";
             }
@@ -152,8 +158,125 @@ public class userController {
         return userRepository.findAll();
     }
 
+    //This is the admin get all users
+    @GetMapping("/admin/all-users")
+    public @ResponseBody Object getAllUsers(HttpSession session){
+        if(!isAdmin(session)){
+            return "Error: Unauthorized access. Please log in first";
+        }
+
+        String role = (String) session.getAttribute("userRole");
+
+        if(role == null || !role.equals("ADMIN")){
+            return "Error: Access denied. Admins only.";
+        }
+
+        return userRepository.findAll();
+    }
+
+    //This is the admin route to force create a new user. (Must be logged in as Admin)
+    @PostMapping("/admin/create-user")
+    public @ResponseBody String createUser(HttpSession session,
+                                           @RequestParam String username,
+                                           @RequestParam String email,
+                                           @RequestParam String password,
+                                           @RequestParam(required = false, defaultValue = "USER") String role) {
+        if(!isAdmin(session)){
+            return "Error: Access denied. Admins only.";
+        }
+
+        if(userRepository.findByEmail(email).isPresent()){
+            return "Error: Email already exists.";
+        }
+
+        if(userRepository.findByUserName(username).isPresent()){
+            return "Error: Username already exists.";
+        }
+
+        User newUser = new User();
+        newUser.setUserName(username);
+        newUser.setEmail(email);
+        newUser.setPassword(passwordEncoder.encode(password));
+        newUser.setRole(User.Role.valueOf(role.toUpperCase()));
+
+        userRepository.save(newUser);
+        return "New user created successfully!";
+
+    }
+
     @GetMapping(path = "/{id}")
     public @ResponseBody User getUserById(@PathVariable Integer id) {
         return userRepository.findById(id).orElse(null);
     }
+
+    @DeleteMapping("/admin/delete-user/{id}")
+    public @ResponseBody String deleteUser(@PathVariable Integer id, HttpSession session) {
+        if(!isAdmin(session)){
+            return "Error: Access denied. Admins only.";
+        }
+
+        String checkSQL = "SELECT COUNT(*) FROM user where id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+        if(count == null || count == 0){
+            return "Error: user not found.";
+        }
+
+        String deleteSQL = "DELETE FROM user WHERE id = ?";
+        jdbcTemplate.update(deleteSQL, id);
+
+        return "User deleted successfully!";
+    }
+
+    //This updates the user role
+    @PatchMapping("/admin/update-role/{id}")
+    public @ResponseBody String updateUserRole(@PathVariable Integer id,
+                                               @RequestParam String newRole,
+                                               HttpSession session) {
+
+        if(!isAdmin(session)){
+            return "Error: Access denied. Admins only.";
+        }
+
+        String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+        if(count == null || count == 0){
+            return "Error: User not found.";
+        }
+
+        String updateSQL = "UPDATE user SET role = ? WHERE id = ?";
+        jdbcTemplate.update(updateSQL, newRole.toUpperCase(), id);
+
+        return "User role updated successfully!";
+    }
+
+    //This is meant to disable the user account (Soft delete)
+    @PatchMapping("/admin/disable-user/{id}")
+    public @ResponseBody String disableUser(@PathVariable Integer id, HttpSession session) {
+        if(!isAdmin(session)){
+            return "Error: Access denied. Admins only.";
+        }
+
+        String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+        if(count == null || count == 0){
+            return "Error: User not found.";
+        }
+
+        String disableSQL = "UPDATE user SET active = false WHERE id = ?";
+        jdbcTemplate.update(disableSQL, id);
+
+        return "User disabled successfully!";
+    }
+
+
+    //A helper method to identify whether user is logged in as an admin or not.
+    private boolean isAdmin(HttpSession session) {
+        if (session.getAttribute("isLoggedIn") == null || !(boolean) session.getAttribute("isLoggedIn")) {
+            return false; // User is not logged in
+        }
+
+        String role = (String) session.getAttribute("userRole");
+        return role != null && role.equals("ADMIN");
+    }
+
 }
