@@ -66,7 +66,7 @@ public class UserTierListController {
                 .body("UserTierList created successfully.");
     }
 
-
+    // Should be admin only
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUserTierList(@PathVariable Integer id) {
         if (!userTierListRepository.existsById(id)) {
@@ -80,7 +80,7 @@ public class UserTierListController {
 ///////////////////////////////// GET MAPPINGS ////////////////////////////////////////
 
     // This route is for testing purposes and should not be accessible to non-admins.
-    @GetMapping
+    @GetMapping("all")
     public @ResponseBody Iterable<UserTierList> getAllUserTierLists() {
         return userTierListRepository.findAll();
     }
@@ -142,6 +142,19 @@ public class UserTierListController {
         List<TierRanking> rankings = tierRankingRepository.findByTierListId(tierListId);
         return ResponseEntity.ok(rankings);
     }
+
+    // Get all tier lists by subject 
+    @GetMapping("/tier-lists/subject/{subject}")
+    public ResponseEntity<List<TierList>> getTierListsBySubject(@PathVariable String subject) {
+        List<TierList> tierLists = tierListRepository.findBySubjectIgnoreCase(subject);
+
+        if (tierLists.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.emptyList());
+        }
+
+        return ResponseEntity.ok(tierLists);
+    }
+
 
 
     // Get UserTierList by the UserTierListID (standard get by ID)
