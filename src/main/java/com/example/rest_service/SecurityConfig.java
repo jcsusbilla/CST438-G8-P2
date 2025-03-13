@@ -1,81 +1,76 @@
-package com.example.rest_service;
+    package com.example.rest_service;
 
-import com.example.rest_service.database.entities.User;
-import com.example.rest_service.database.repositories.UserRepository;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.SecurityFilterChain;
+    import com.example.rest_service.database.entities.User;
+    import com.example.rest_service.database.repositories.UserRepository;
+    import org.springframework.context.annotation.Bean;
+    import org.springframework.context.annotation.Configuration;
+    import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+    import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+    import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+    import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+    import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+    import org.springframework.security.oauth2.core.user.OAuth2User;
+    import org.springframework.security.web.SecurityFilterChain;
 
-import java.util.Optional;
+    import java.util.Optional;
 
-@Configuration
-@EnableWebSecurity
-public class SecurityConfig {
-    private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // Password encoder for dummy password
+    @Configuration
+    @EnableWebSecurity
+    public class SecurityConfig {
 
-    public SecurityConfig(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+        private final UserRepository userRepository;
+        private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/user/oauth2/google")
-
-                        // was getting 403 forbidden while trying to test new post routes
-                        // right now i need to manually ignore any post requests I want to test.
-                        .ignoringRequestMatchers("/tierlists/add")
-                        .ignoringRequestMatchers("/userTierLists/add")
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/user/oauth2/google").authenticated()
-                        .anyRequest().permitAll()
-                )
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo.userService(this::handleGoogleLogin))
-                );
-
-        return http.build();
-    }
-
-    private OAuth2User handleGoogleLogin(OAuth2UserRequest userRequest) {
-        DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
-        OAuth2User oAuth2User = delegate.loadUser(userRequest);
-        String email = oAuth2User.getAttribute("email");
-        String firstName = oAuth2User.getAttribute("given_name");
-        String lastName = oAuth2User.getAttribute("family_name");
-
-        // If Google doesn't provide a username
-        String username = oAuth2User.getAttribute("user_name");
-        if (username == null || username.isEmpty()) {
-            username = email.split("@")[0];
+        public SecurityConfig(UserRepository userRepository) {
+            this.userRepository = userRepository;
         }
 
-        // Check if the user exists
-        Optional<User> existingUser = userRepository.findByEmail(email);
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+            http
+                    .csrf(csrf -> csrf.disable())  // Using modern approach to disable CSRF
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/user/oauth2/google").authenticated()
+                            .anyRequest().permitAll()
+                    )
+                    .oauth2Login(oauth2 -> oauth2
+                            .userInfoEndpoint(userInfo -> userInfo.userService(this::handleGoogleLogin))
+                    );
 
-        if (existingUser.isEmpty()) {
-            // Create a new user with Google details
-            User newUser = new User();
-            newUser.setUserName(username);
-            newUser.setEmail(email);
-            newUser.setFirstName(firstName);
-            newUser.setLastName(lastName);
-            newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
-
-            userRepository.save(newUser); // Save the new user
+            return http.build();
         }
 
-        return oAuth2User;
+
+        private OAuth2User handleGoogleLogin(OAuth2UserRequest userRequest) {
+            DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
+            OAuth2User oAuth2User = delegate.loadUser(userRequest);
+            String email = oAuth2User.getAttribute("email");
+            String firstName = oAuth2User.getAttribute("given_name");
+            String lastName = oAuth2User.getAttribute("family_name");
+
+            // If Google doesn't provide a username
+            String username = oAuth2User.getAttribute("user_name");
+            if (username == null || username.isEmpty()) {
+                username = email.split("@")[0];
+            }
+
+            // Check if the user exists
+            Optional<User> existingUser = userRepository.findByEmail(email);
+
+            if (existingUser.isEmpty()) {
+                // Create a new user with Google details
+                User newUser = new User();
+                newUser.setUserName(username);
+                newUser.setEmail(email);
+                newUser.setFirstName(firstName);
+                newUser.setLastName(lastName);
+                newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
+
+                userRepository.save(newUser); // Save the new user
+            }
+
+            return oAuth2User;
+        }
+
+
     }
-}
-
-
