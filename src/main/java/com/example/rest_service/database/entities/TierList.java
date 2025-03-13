@@ -12,7 +12,6 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.Set;
 
-
 @Entity
 @Table(name = "tier_list")
 public class TierList {
@@ -71,4 +70,5 @@ public class TierList {
     public void setId(int tierListId) {
     }
 }
+
 

@@ -12,10 +12,10 @@ import jakarta.persistence.*;
 public class User {
 
     @Id
-    @GeneratedValue(strategy=GenerationType.AUTO) // This auto-generates an ID when a new user is added
+    @GeneratedValue(strategy = GenerationType.AUTO) // This auto-generates an ID when a new user is added
     private Integer id;
 
-    @Column(unique=true)
+    @Column(unique = true)
     private String userName; // Column: user_name
 
     private String password; // Column: password (This stores the **hashed** password, not plain text)
@@ -23,16 +23,16 @@ public class User {
     @Column(unique = true)
     private String email; // Column: email
 
+
     private String firstName;
     private String lastName;
 
 
-
-    private String getFirstName(){
+    private String getFirstName() {
         return firstName;
     }
 
-    private String getLastName(){
+    private String getLastName() {
         return lastName;
     }
 
