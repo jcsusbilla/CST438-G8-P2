@@ -76,6 +76,32 @@ This API provides endpoints for managing tier lists and user authentication.
 - **DELETE** `/userTierLists/deleteTierList/{id}`
 - **Response:** `"UserTierList deleted successfully."` or `"Tier List not found with ID: {id}"`
 
+### Tier Ranking Endpoints
+#### Add a Ranking
+- **POST** `/tier-rankings/add`
+- **Parameters:**
+  - `tierListId` (Integer) - Required
+  - `item` (String) - Required
+  - `tier` (String) - Required (S, A, B, C, D, F)
+- **Response:** `"Ranking added successfully."` or `"Tier List not found."`
+
+#### Retrieve Rankings by Tier List ID
+- **GET** `/tier-rankings/{tierListId}` - Returns rankings for a given Tier List
+
+#### Retrieve Ranking by ID
+- **GET** `/tier-rankings/ranking/{id}` - Returns a ranking by its ID
+
+#### Update a Ranking
+- **PUT** `/tier-rankings/update/{id}`
+- **Parameters:**
+  - `item` (String) - Optional
+  - `tier` (String) - Optional
+- **Response:** `"Ranking updated successfully."` or `"Tier List not found."`
+
+#### Delete a Ranking
+- **DELETE** `/tier-rankings/delete/{id}`
+- **Response:** `"Ranking deleted successfully."` or `"Ranking not found."`
+
 ## Dependencies
 - Spring Boot
 - Spring Data JPA
@@ -89,5 +115,7 @@ This API provides endpoints for managing tier lists and user authentication.
 
 ## Future Enhancements
 - Add retrieval of tier lists by date
+
+
   
 
