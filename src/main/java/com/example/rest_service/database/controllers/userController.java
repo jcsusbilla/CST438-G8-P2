@@ -4,6 +4,8 @@ import com.example.rest_service.database.repositories.UserRepository;
 import com.example.rest_service.database.entities.User;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -76,26 +78,31 @@ public class userController {
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/core/annotation/AuthenticationPrincipal.html
     // this path now simply handles logging in a user after authentication.
     @PostMapping("/oauth2/google")
-    public @ResponseBody String googleLogin(@AuthenticationPrincipal OAuth2User user, HttpSession session) {
+    public @ResponseBody ResponseEntity<String> googleLogin(OAuth2User user, HttpSession session) {
         if (user == null) {
-            return "Error: Unable to authenticate with Google.";
+            return new ResponseEntity<>("Error: Unable to authenticate with Google.", HttpStatus.BAD_REQUEST);
         }
 
+        // Get user details from Google
         String email = user.getAttribute("email");
-        // Check if the user already exists in the database using email. This is kind of redundant since a user will be
-        // I want to get the attributes from the actual database because a googleOAuth user may have changed their
-        // userName. If i just took the info from user.getAttribute("userName") it may not match anymore.
+        String username = user.getAttribute("name"); // You can also extract 'username' or 'first_name', etc.
+
+        // Check if user exists in the database
         Optional<User> existingUser = userRepository.findByEmail(email);
 
         if (existingUser.isPresent()) {
             User userFromDb = existingUser.get();
+            // Store necessary info in session (user email and userName)
             session.setAttribute("userEmail", userFromDb.getEmail());
             session.setAttribute("userName", userFromDb.getUserName());
             session.setAttribute("isLoggedIn", true);
-            return "Google Login Successful! Welcome " + userFromDb.getUserName();
-        }
 
-        return "Error: Unable to authenticate with Google.";
+            // Return success response with HTTP status 200 (OK)
+            return new ResponseEntity<>("Google Login Successful! Welcome " + userFromDb.getUserName(), HttpStatus.OK);
+        } else {
+            // Return error response with HTTP status 404 (Not Found) if user doesn't exist
+            return new ResponseEntity<>("Error: User not found in the database.", HttpStatus.NOT_FOUND);
+        }
     }
 
 
