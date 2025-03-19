@@ -4,6 +4,7 @@
     import com.example.rest_service.database.repositories.UserRepository;
     import org.springframework.context.annotation.Bean;
     import org.springframework.context.annotation.Configuration;
+    import org.springframework.http.ResponseEntity;
     import org.springframework.security.config.annotation.web.builders.HttpSecurity;
     import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
     import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -12,6 +13,7 @@
     import org.springframework.security.oauth2.core.user.OAuth2User;
     import org.springframework.security.web.SecurityFilterChain;
 
+    import java.util.Collections;
     import java.util.Optional;
 
     @Configuration
@@ -28,13 +30,17 @@
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
             http
-                    .csrf(csrf -> csrf.disable())  // Using modern approach to disable CSRF
+                    .csrf(csrf -> csrf.disable())  // Disable CSRF for API calls (use cookies for security)
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers("/user/oauth2/google").authenticated()
                             .anyRequest().permitAll()
                     )
                     .oauth2Login(oauth2 -> oauth2
                             .userInfoEndpoint(userInfo -> userInfo.userService(this::handleGoogleLogin))
+                    )
+                    .sessionManagement(session -> session
+                            .maximumSessions(1)
+                            .expiredUrl("/login?expired") // I think this will redirect back to frontend login
                     );
 
             return http.build();
