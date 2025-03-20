@@ -17,7 +17,7 @@ import java.util.Optional;
 
 @CrossOrigin(origins = "http://localhost:8081")
 @RestController
-@RequestMapping("/tier-lists")
+@RequestMapping("/tierlists")
 public class TierListController {
 
     @Autowired
