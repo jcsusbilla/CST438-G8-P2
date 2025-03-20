@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -38,10 +39,10 @@ public class userController {
 //    @PostMapping(path = "/add") // Map ONLY POST Requests
     @PostMapping("/register")
     public ResponseEntity<Object> addNewUser(@RequestParam String user_name,
-                                           @RequestParam String email,
-                                           @RequestParam String password,
-                                           @RequestParam (required = false) String first_name,
-                                           @RequestParam (required = false) String last_name) {
+                                             @RequestParam String email,
+                                             @RequestParam String password,
+                                             @RequestParam (required = false) String first_name,
+                                             @RequestParam (required = false) String last_name) {
 
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
@@ -107,9 +108,11 @@ public class userController {
 
 
     //Just for my reference queryForMap() is only for 1 row. queryForList() is for multiple queries
-    @PostMapping("/login") //This is the route for user login
-    public ResponseEntity<Object> loginUser(@RequestParam String email, @RequestParam String password, HttpSession session) {
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, String>> loginUser(@RequestBody Map<String, String> loginData, HttpSession session) {
         String sql = "SELECT id, user_name, password, first_name, last_name, role FROM user WHERE email = ?";
+        String email = loginData.get("email");
+        String password = loginData.get("password");
 
         try {
             //This executes the SQL query using the "queryForMap()"
@@ -140,22 +143,29 @@ public class userController {
                 session.setAttribute("userName", userName);
                 session.setAttribute("userRole", role);
                 session.setAttribute("isLoggedIn", true);
-                return ResponseEntity.ok(Map.of("message", "Login successful! Welcome " + userData.get("user_name")));
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Incorrect password."));
-            }
 
+                return ResponseEntity.ok(Map.of(
+                        "message", "Login successful",
+                        "email", email,
+                        "userName", userName,
+                        "firstName", firstName,  // ✅ Include in response
+                        "lastName", lastName     // ✅ Include in response
+                ));
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Incorrect password. Please try again!"));
+            }
         } catch (Exception e) {
-            System.out.println("Error: " + e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error logging in. Please try again later."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error logging in. Please try again later."));
         }
     }
 
 
     @GetMapping("/logout")
-    public ResponseEntity<Object> logout(HttpSession session) {
+    public @ResponseBody String logout(HttpSession session) {
         session.invalidate();
-        return ResponseEntity.ok(Map.of("message", "Logged out successfully!"));
+        return "Logged out successfully!";
     }
 
     // Get all users
@@ -183,20 +193,21 @@ public class userController {
 
     //This is the admin route to force create a new user. (Must be logged in as Admin)
     @PostMapping("/admin/create-user")
-    public ResponseEntity<Object> createUser(HttpSession session,
-                                            @RequestParam String username,
-                                            @RequestParam String email,
-                                            @RequestParam String password,
-                                            @RequestParam(required = false, defaultValue = "USER") String role) {
+    public @ResponseBody String createUser(HttpSession session,
+                                           @RequestParam String username,
+                                           @RequestParam String email,
+                                           @RequestParam String password,
+                                           @RequestParam(required = false, defaultValue = "USER") String role) {
         if(!isAdmin(session)){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
+            return "Error: Access denied. Admins only.";
         }
 
         if(userRepository.findByEmail(email).isPresent()){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists."));}
+            return "Error: Email already exists.";
+        }
 
         if(userRepository.findByUserName(username).isPresent()){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Username already exists."));
+            return "Error: Username already exists.";
         }
 
         User newUser = new User();
@@ -206,7 +217,8 @@ public class userController {
         newUser.setRole(User.Role.valueOf(role.toUpperCase()));
 
         userRepository.save(newUser);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "New user created successfully!"));
+        return "New user created successfully!";
+
     }
 
     @GetMapping(path = "/{id}")
@@ -215,62 +227,62 @@ public class userController {
     }
 
     @DeleteMapping("/admin/delete-user/{id}")
-    public ResponseEntity<Object>  deleteUser(@PathVariable Integer id, HttpSession session) {
+    public @ResponseBody String deleteUser(@PathVariable Integer id, HttpSession session) {
         if(!isAdmin(session)){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
+            return "Error: Access denied. Admins only.";
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user where id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
+            return "Error: user not found.";
         }
 
         String deleteSQL = "DELETE FROM user WHERE id = ?";
         jdbcTemplate.update(deleteSQL, id);
 
-        return ResponseEntity.ok(Map.of("message", "User deleted successfully!"));
+        return "User deleted successfully!";
     }
 
     //This updates the user role
     @PatchMapping("/admin/update-role/{id}")
-    public ResponseEntity<Object> updateUserRole(@PathVariable Integer id,
+    public @ResponseBody String updateUserRole(@PathVariable Integer id,
                                                @RequestParam String newRole,
                                                HttpSession session) {
 
         if(!isAdmin(session)){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
+            return "Error: Access denied. Admins only.";
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
+            return "Error: User not found.";
         }
 
         String updateSQL = "UPDATE user SET role = ? WHERE id = ?";
         jdbcTemplate.update(updateSQL, newRole.toUpperCase(), id);
 
-        return ResponseEntity.ok(Map.of("message", "User role updated successfully!"));
+        return "User role updated successfully!";
     }
 
     //This is meant to disable the user account (Soft delete)
     @PatchMapping("/admin/disable-user/{id}")
-    public ResponseEntity<Object> disableUser(@PathVariable Integer id, HttpSession session) {
+    public @ResponseBody String disableUser(@PathVariable Integer id, HttpSession session) {
         if(!isAdmin(session)){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
+            return "Error: Access denied. Admins only.";
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
+            return "Error: User not found.";
         }
 
         String disableSQL = "UPDATE user SET active = false WHERE id = ?";
         jdbcTemplate.update(disableSQL, id);
 
-        return ResponseEntity.ok(Map.of("message", "User disabled successfully!"));
+        return "User disabled successfully!";
     }
 
 
@@ -284,4 +296,40 @@ public class userController {
         return role != null && role.equals("ADMIN");
     }
 
+    @GetMapping("/details")
+    public ResponseEntity<Map<String, String>> getUserDetails(@RequestParam(required = true) String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid email provided."));
+        }
+
+        String sql = "SELECT user_name, first_name, last_name FROM user WHERE email = ?";
+        try {
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, email);
+            if (results.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "User not found"));
+            }
+
+            Map<String, Object> userData = results.get(0);
+            return ResponseEntity.ok(Map.of(
+                    "userName", (String) userData.get("user_name"),
+                    "firstName", (String) userData.get("first_name"),
+                    "lastName", (String) userData.get("last_name")
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error retrieving user details"));
+        }
+    }
+
+    @GetMapping("/getUserId")
+    public ResponseEntity<?> getUserIdByEmail(@RequestParam String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+
+        if (user.isPresent()) {
+            return ResponseEntity.ok(Map.of("userId", user.get().getId()));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
+        }
+    }
 }
