@@ -13,8 +13,11 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 // This means that this class is a Controller
 @Controller
@@ -167,18 +170,22 @@ public class userController {
 
     //This is the admin get all users
     @GetMapping("/admin/all-users")
-    public @ResponseBody Object getAllUsers(HttpSession session){
+    public ResponseEntity<Object> getAllUsers(HttpSession session){
         if(!isAdmin(session)){
-            return "Error: Unauthorized access. Please log in first";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
         String role = (String) session.getAttribute("userRole");
 
         if(role == null || !role.equals("ADMIN")){
-            return "Error: Access denied. Admins only.";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
-        return userRepository.findAll();
+        List<User> users = StreamSupport
+                .stream(userRepository.findAll().spliterator(), false)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(users);
     }
 
     //This is the admin route to force create a new user. (Must be logged in as Admin)
