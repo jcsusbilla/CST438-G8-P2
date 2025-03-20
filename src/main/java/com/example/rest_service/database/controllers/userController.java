@@ -4,6 +4,8 @@ import com.example.rest_service.database.repositories.UserRepository;
 import com.example.rest_service.database.entities.User;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -35,7 +37,7 @@ public class userController {
      */
 //    @PostMapping(path = "/add") // Map ONLY POST Requests
     @PostMapping("/register")
-    public @ResponseBody String addNewUser(@RequestParam String user_name,
+    public ResponseEntity<Object> addNewUser(@RequestParam String user_name,
                                            @RequestParam String email,
                                            @RequestParam String password,
                                            @RequestParam (required = false) String first_name,
@@ -43,13 +45,13 @@ public class userController {
 
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
-            return "Error: Email already exists. Please use a different email.";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists."));
         }
 
         Optional<User> existingUserName = userRepository.findByUserName(user_name);
 
         if (existingUserName.isPresent()) {
-            return "Error: Username already exists. Please use a different username.";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Username already exists."));
         }
 
         //Here we create a new user object
@@ -69,7 +71,7 @@ public class userController {
 
         //Here we save the User into the database.
         userRepository.save(n);
-        return "User registered successfully!";
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "User registered successfully!"));
     }
 
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/core/user/OAuth2User.html
@@ -101,7 +103,7 @@ public class userController {
 
     //Just for my reference queryForMap() is only for 1 row. queryForList() is for multiple queries
     @PostMapping("/login") //This is the route for user login
-    public @ResponseBody String loginUser(@RequestParam String email, @RequestParam String password, HttpSession session) {
+    public ResponseEntity<Object> loginUser(@RequestParam String email, @RequestParam String password, HttpSession session) {
         String sql = "SELECT id, user_name, password, first_name, last_name, role FROM user WHERE email = ?";
 
         try {
@@ -133,22 +135,22 @@ public class userController {
                 session.setAttribute("userName", userName);
                 session.setAttribute("userRole", role);
                 session.setAttribute("isLoggedIn", true);
-                return "Login successful! Welcome " + userName + " (Role: " + role + ")";
+                return ResponseEntity.ok(Map.of("message", "Login successful! Welcome " + userData.get("user_name")));
             } else {
-                return "Incorrect password. Please try again!";
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Incorrect password."));
             }
 
         } catch (Exception e) {
             System.out.println("Error: " + e);
-            return "Error logging in. Please try again later.";
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error logging in. Please try again later."));
         }
     }
 
 
     @GetMapping("/logout")
-    public @ResponseBody String logout(HttpSession session) {
+    public ResponseEntity<Object> logout(HttpSession session) {
         session.invalidate();
-        return "Logged out successfully!";
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully!"));
     }
 
     // Get all users
@@ -176,21 +178,20 @@ public class userController {
 
     //This is the admin route to force create a new user. (Must be logged in as Admin)
     @PostMapping("/admin/create-user")
-    public @ResponseBody String createUser(HttpSession session,
-                                           @RequestParam String username,
-                                           @RequestParam String email,
-                                           @RequestParam String password,
-                                           @RequestParam(required = false, defaultValue = "USER") String role) {
+    public ResponseEntity<Object> createUser(HttpSession session,
+                                            @RequestParam String username,
+                                            @RequestParam String email,
+                                            @RequestParam String password,
+                                            @RequestParam(required = false, defaultValue = "USER") String role) {
         if(!isAdmin(session)){
-            return "Error: Access denied. Admins only.";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
         if(userRepository.findByEmail(email).isPresent()){
-            return "Error: Email already exists.";
-        }
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists."));}
 
         if(userRepository.findByUserName(username).isPresent()){
-            return "Error: Username already exists.";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Username already exists."));
         }
 
         User newUser = new User();
@@ -200,8 +201,7 @@ public class userController {
         newUser.setRole(User.Role.valueOf(role.toUpperCase()));
 
         userRepository.save(newUser);
-        return "New user created successfully!";
-
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "New user created successfully!"));
     }
 
     @GetMapping(path = "/{id}")
@@ -210,62 +210,62 @@ public class userController {
     }
 
     @DeleteMapping("/admin/delete-user/{id}")
-    public @ResponseBody String deleteUser(@PathVariable Integer id, HttpSession session) {
+    public ResponseEntity<Object>  deleteUser(@PathVariable Integer id, HttpSession session) {
         if(!isAdmin(session)){
-            return "Error: Access denied. Admins only.";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user where id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return "Error: user not found.";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
         }
 
         String deleteSQL = "DELETE FROM user WHERE id = ?";
         jdbcTemplate.update(deleteSQL, id);
 
-        return "User deleted successfully!";
+        return ResponseEntity.ok(Map.of("message", "User deleted successfully!"));
     }
 
     //This updates the user role
     @PatchMapping("/admin/update-role/{id}")
-    public @ResponseBody String updateUserRole(@PathVariable Integer id,
+    public ResponseEntity<Object> updateUserRole(@PathVariable Integer id,
                                                @RequestParam String newRole,
                                                HttpSession session) {
 
         if(!isAdmin(session)){
-            return "Error: Access denied. Admins only.";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return "Error: User not found.";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
         }
 
         String updateSQL = "UPDATE user SET role = ? WHERE id = ?";
         jdbcTemplate.update(updateSQL, newRole.toUpperCase(), id);
 
-        return "User role updated successfully!";
+        return ResponseEntity.ok(Map.of("message", "User role updated successfully!"));
     }
 
     //This is meant to disable the user account (Soft delete)
     @PatchMapping("/admin/disable-user/{id}")
-    public @ResponseBody String disableUser(@PathVariable Integer id, HttpSession session) {
+    public ResponseEntity<Object> disableUser(@PathVariable Integer id, HttpSession session) {
         if(!isAdmin(session)){
-            return "Error: Access denied. Admins only.";
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Access denied. Admins only."));
         }
 
         String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
         if(count == null || count == 0){
-            return "Error: User not found.";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found."));
         }
 
         String disableSQL = "UPDATE user SET active = false WHERE id = ?";
         jdbcTemplate.update(disableSQL, id);
 
-        return "User disabled successfully!";
+        return ResponseEntity.ok(Map.of("message", "User disabled successfully!"));
     }
 
 
