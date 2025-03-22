@@ -149,7 +149,8 @@ public class userController {
                         "email", email,
                         "userName", userName,
                         "firstName", firstName,  // ✅ Include in response
-                        "lastName", lastName     // ✅ Include in response
+                        "lastName", lastName,   // ✅ Include in response
+                        "role", (String) role
                 ));
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -306,7 +307,7 @@ public class userController {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid email provided."));
         }
 
-        String sql = "SELECT user_name, first_name, last_name FROM user WHERE email = ?";
+        String sql = "SELECT user_name, first_name, last_name, role FROM user WHERE email = ?";
         try {
             List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, email);
             if (results.isEmpty()) {
@@ -318,7 +319,8 @@ public class userController {
             return ResponseEntity.ok(Map.of(
                     "userName", (String) userData.get("user_name"),
                     "firstName", (String) userData.get("first_name"),
-                    "lastName", (String) userData.get("last_name")
+                    "lastName", (String) userData.get("last_name"),
+                    "role", (String) userData.get("role")
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
