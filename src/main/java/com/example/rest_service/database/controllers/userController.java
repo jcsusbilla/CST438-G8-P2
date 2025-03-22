@@ -197,6 +197,8 @@ public class userController {
                                            @RequestParam String username,
                                            @RequestParam String email,
                                            @RequestParam String password,
+                                           @RequestParam (required = false) String first_name,
+                                           @RequestParam (required = false) String last_name,
                                            @RequestParam(required = false, defaultValue = "USER") String role) {
         if(!isAdmin(session)){
             return "Error: Access denied. Admins only.";
@@ -215,6 +217,8 @@ public class userController {
         newUser.setEmail(email);
         newUser.setPassword(passwordEncoder.encode(password));
         newUser.setRole(User.Role.valueOf(role.toUpperCase()));
+        newUser.setFirstName(first_name);
+        newUser.setLastName(last_name);
 
         userRepository.save(newUser);
         return "New user created successfully!";
