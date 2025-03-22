@@ -115,37 +115,29 @@ public class userController {
         String password = loginData.get("password");
 
         try {
-            //This executes the SQL query using the "queryForMap()"
-            //It is then returned as a map with Map<String, Object) where:
-            //Each **COLUMN** name from the database is **KEY** in the Map.
-            //Each **COLUMN VALUE** (from the database row) is stored as a **value** in the Map.
             Map<String, Object> userData = jdbcTemplate.queryForMap(sql, email);
-            // Example: If the database has this row:
-            // | id | user_name | email       | password |
-            // | 1  | John     | John@example | #$#@$##$ |
-            // Therefore "queryForMap(sql, "John@example.com")" will return:
-            // userData = {
-            //    "id": 1,
-            //    "user_name": "John",
-            //    "password": #$#@$##$
-            //} This is my understanding of this.
 
+            Integer userId = (Integer) userData.get("id");                  // ✅ Get user ID
             String userName = (String) userData.get("user_name");
             String hashedPassword = (String) userData.get("password");
             String firstName = (String) userData.get("first_name");
             String lastName = (String) userData.get("last_name");
-            String role = (String) userData.get("role"); //This is to get the user role
+            String role = (String) userData.get("role");
 
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
             if (encoder.matches(password, hashedPassword)) {
+                // ✅ Store in session
+                session.setAttribute("userId", userId);//jc
                 session.setAttribute("userEmail", email);
                 session.setAttribute("userName", userName);
                 session.setAttribute("userRole", role);
                 session.setAttribute("isLoggedIn", true);
 
+                // ✅ Return userId in response
                 return ResponseEntity.ok(Map.of(
                         "message", "Login successful",
+                        "userId", String.valueOf(userId), //jc
                         "email", email,
                         "userName", userName,
                         "firstName", firstName,  // ✅ Include in response
@@ -156,6 +148,7 @@ public class userController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "Incorrect password. Please try again!"));
             }
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Error logging in. Please try again later."));

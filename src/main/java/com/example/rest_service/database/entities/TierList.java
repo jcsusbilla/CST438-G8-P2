@@ -29,6 +29,9 @@ public class TierList {
     @Column(nullable = false)
     private LocalDate weekStartDate;
 
+    @Column(name = "user_id", nullable = false)
+    private Integer userId;
+
     // Constructors
     public TierList() {}
 
@@ -39,9 +42,18 @@ public class TierList {
     }
 
     // Getters and Setters
+
+    public Integer getUserId() {
+        return userId;
+    }                               //user id
+
+    public void setUserId(Integer userId) {
+        this.userId = userId;
+    }
+
     public Integer getId() {
         return id;
-    }
+    }                                       //tier list id
 
     public String getTitle() {
         return title;
