@@ -17,7 +17,7 @@ public class CorsConfig {
                                 "http://localhost:8081", // ✅ Allow local development frontend
                                 "https://tier-list-app-2c41fcb37475.herokuapp.com" // ✅ Allow Heroku frontend
                         )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }
