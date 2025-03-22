@@ -14,8 +14,4 @@ public interface TierListRepository extends CrudRepository<TierList, Integer> {
     TierList getReferenceById(Integer tierId);
 
     List<TierList> findBySubjectIgnoreCase(String subject);
-
-    List<TierList> findByUserId(Integer userId);
 }
-
-

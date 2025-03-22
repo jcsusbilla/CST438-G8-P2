@@ -1,5 +1,5 @@
 package com.example.rest_service.database.entities;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
 
 import jakarta.persistence.*;
 
@@ -18,7 +18,6 @@ public class TierRanking {
 
     @ManyToOne
     @JoinColumn(name = "tier_list_id", nullable = false)
-    @JsonIgnore
     private TierList tierList; // ✅ Links this ranking to a TierList
 
     // ✅ Default constructor (required by JPA)
