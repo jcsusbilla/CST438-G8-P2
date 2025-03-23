@@ -115,7 +115,20 @@ public class userController {
         String password = loginData.get("password");
 
         try {
+            //This executes the SQL query using the "queryForMap()"
+            //It is then returned as a map with Map<String, Object) where:
+            //Each **COLUMN** name from the database is **KEY** in the Map.
+            //Each **COLUMN VALUE** (from the database row) is stored as a **value** in the Map.
             Map<String, Object> userData = jdbcTemplate.queryForMap(sql, email);
+            // Example: If the database has this row:
+            // | id | user_name | email       | password |
+            // | 1  | John     | John@example | #$#@$##$ |
+            // Therefore "queryForMap(sql, "John@example.com")" will return:
+            // userData = {
+            //    "id": 1,
+            //    "user_name": "John",
+            //    "password": #$#@$##$
+            //} This is my understanding of this.
 
             Integer userId = (Integer) userData.get("id");                  // ✅ Get user ID
             String userName = (String) userData.get("user_name");
@@ -140,8 +153,9 @@ public class userController {
                         "userId", String.valueOf(userId), //jc
                         "email", email,
                         "userName", userName,
-                        "firstName", firstName,
-                        "lastName", lastName
+                        "firstName", firstName,  // ✅ Include in response
+                        "lastName", lastName,   // ✅ Include in response
+                        "role", (String) role
                 ));
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -190,6 +204,8 @@ public class userController {
                                            @RequestParam String username,
                                            @RequestParam String email,
                                            @RequestParam String password,
+                                           @RequestParam (required = false) String first_name,
+                                           @RequestParam (required = false) String last_name,
                                            @RequestParam(required = false, defaultValue = "USER") String role) {
         if(!isAdmin(session)){
             return "Error: Access denied. Admins only.";
@@ -208,6 +224,8 @@ public class userController {
         newUser.setEmail(email);
         newUser.setPassword(passwordEncoder.encode(password));
         newUser.setRole(User.Role.valueOf(role.toUpperCase()));
+        newUser.setFirstName(first_name);
+        newUser.setLastName(last_name);
 
         userRepository.save(newUser);
         return "New user created successfully!";
@@ -295,7 +313,7 @@ public class userController {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid email provided."));
         }
 
-        String sql = "SELECT user_name, first_name, last_name FROM user WHERE email = ?";
+        String sql = "SELECT user_name, first_name, last_name, role FROM user WHERE email = ?";
         try {
             List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, email);
             if (results.isEmpty()) {
@@ -307,7 +325,8 @@ public class userController {
             return ResponseEntity.ok(Map.of(
                     "userName", (String) userData.get("user_name"),
                     "firstName", (String) userData.get("first_name"),
-                    "lastName", (String) userData.get("last_name")
+                    "lastName", (String) userData.get("last_name"),
+                    "role", (String) userData.get("role")
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
