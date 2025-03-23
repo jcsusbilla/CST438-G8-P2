@@ -14,12 +14,18 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedOrigins(
-                                "http://localhost:8081", // ✅ Allow local development frontend
-                                "https://tier-list-app-2c41fcb37475.herokuapp.com" // ✅ Allow Heroku frontend
+                                "http://localhost:8081",       // Allow local development frontend
+                                "http://localhost:19006",      // Another common Expo port
+                                "http://localhost:19000",      // Expo dev client
+                                "http://localhost:19001",      // Expo dev client alternate
+                                "http://localhost:19002",      // Expo dev tools
+                                "https://tier-list-app-2c41fcb37475.herokuapp.com", // Heroku frontend
+                                "http://tier-list-app-2c41fcb37475.herokuapp.com"  // Non-HTTPS Heroku
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowCredentials(true)
+                        .maxAge(3600); // 1 hour max age
             }
         };
     }
