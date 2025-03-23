@@ -15,9 +15,10 @@ public class CorsConfig {
                 registry.addMapping("/**")
                         .allowedOrigins(
                                 "http://localhost:8081", // ✅ Allow local development frontend
+                                "http://localhost:19006",
                                 "https://tier-list-app-2c41fcb37475.herokuapp.com" // ✅ Allow Heroku frontend
                         )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }

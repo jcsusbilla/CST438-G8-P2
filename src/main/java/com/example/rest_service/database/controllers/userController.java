@@ -154,6 +154,46 @@ public class userController {
         }
     }
 
+    @PostMapping("/register-google-user")
+    public ResponseEntity<?> registerGoogleUser(@RequestBody Map<String, String> userData) {
+        String email = userData.get("email");
+        String firstName = userData.get("firstName");
+        String lastName = userData.get("lastName");
+
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+
+        // Check if user already exists
+        Optional<User> existingUser = userRepository.findByEmail(email);
+
+        if (existingUser.isPresent()) {
+            return ResponseEntity.ok(Map.of(
+                    "userId", existingUser.get().getId(),
+                    "message", "User already exists"
+            ));
+        }
+
+        // Create username from email
+        String username = email.split("@")[0];
+
+        // Create a new user
+        User newUser = new User();
+        newUser.setUserName(username);
+        newUser.setEmail(email);
+        newUser.setFirstName(firstName != null ? firstName : "");
+        newUser.setLastName(lastName != null ? lastName : "");
+        newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
+        newUser.setRole(User.Role.USER);
+
+        userRepository.save(newUser);
+
+        return ResponseEntity.ok(Map.of(
+                "userId", newUser.getId(),
+                "message", "User registered successfully"
+        ));
+    }
+
 
     @GetMapping("/logout")
     public @ResponseBody String logout(HttpSession session) {
