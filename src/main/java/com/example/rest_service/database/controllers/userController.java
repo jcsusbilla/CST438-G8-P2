@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,39 +42,90 @@ public class userController {
     public ResponseEntity<Object> addNewUser(@RequestParam String user_name,
                                              @RequestParam String email,
                                              @RequestParam String password,
-                                             @RequestParam (required = false) String first_name,
-                                             @RequestParam (required = false) String last_name) {
+                                             @RequestParam(required = false) String first_name,
+                                             @RequestParam(required = false) String last_name) {
+        // 🧾 Debug Logging
+        System.out.println("📩 Received registration request:");
+        System.out.println("🧑 Username: " + user_name);
+        System.out.println("📧 Email: " + email);
+        System.out.println("🔑 Password: " + password);
+        System.out.println("🧍 First Name: " + first_name);
+        System.out.println("🧍 Last Name: " + last_name);
 
+        // ✅ Check if email already exists
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists."));
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Email already exists."));
         }
 
+        // ✅ Check if username already exists
         Optional<User> existingUserName = userRepository.findByUserName(user_name);
-
         if (existingUserName.isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Username already exists."));
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Username already exists."));
         }
 
-        //Here we create a new user object
         User n = new User();
         n.setUserName(user_name);
         n.setEmail(email);
         n.setFirstName(first_name);
         n.setLastName(last_name);
 
+        // 🔒 Hash password
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        //At this point we now have a hashed password no longer in plain text
         String hashedPassword = encoder.encode(password);
+        n.setPassword(hashedPassword);
 
-        n.setPassword(hashedPassword); //Here we are now using the new secure password.
-
+        // 👤 Set default role
         n.setRole(User.Role.USER);
 
-        //Here we save the User into the database.
+        // 💾 Save to DB
         userRepository.save(n);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "User registered successfully!"));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("message", "User registered successfully!"));
     }
+//        @PostMapping("/register")
+//        public ResponseEntity<Object> addNewUser(@RequestParam String user_name,
+//                                                 @RequestParam String email,
+//                                                 @RequestParam String password,
+//                                                 @RequestParam (required = false) String first_name,
+//                                                 @RequestParam (required = false) String last_name) {
+//
+//            Optional<User> existingUser = userRepository.findByEmail(email);
+//            if (existingUser.isPresent()) {
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Email already exists."));
+//            }
+//
+//            Optional<User> existingUserName = userRepository.findByUserName(user_name);
+//
+//            if (existingUserName.isPresent()) {
+//                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Username already exists."));
+//            }
+//
+//            //Here we create a new user object
+//            User n = new User();
+//            n.setUserName(user_name);
+//            n.setEmail(email);
+//            n.setFirstName(first_name);
+//            n.setLastName(last_name);
+//
+//            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+//            //At this point we now have a hashed password no longer in plain text
+//            String hashedPassword = encoder.encode(password);
+//
+//            n.setPassword(hashedPassword); //Here we are now using the new secure password.
+//
+//            n.setRole(User.Role.USER);
+//
+//            //Here we save the User into the database.
+//            userRepository.save(n);
+//            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+//                    "message", "User registered successfully!",
+//                    "userId", n.getId().toString()
+//            ));
+//        }
 
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/core/user/OAuth2User.html
     // https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/core/annotation/AuthenticationPrincipal.html
@@ -214,10 +266,27 @@ public class userController {
 
     }
 
+//    @GetMapping(path = "/{id}")
+//    public @ResponseBody User getUserById(@PathVariable Integer id) {
+//        return userRepository.findById(id).orElse(null);
+//    }
+
+    //jc -->
     @GetMapping(path = "/{id}")
-    public @ResponseBody User getUserById(@PathVariable Integer id) {
-        return userRepository.findById(id).orElse(null);
+    public ResponseEntity<Map<String, String>> getUserById(@PathVariable Integer id) {
+        Optional<User> userOptional = userRepository.findById(id);
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        User user = userOptional.get();
+        Map<String, String> userData = new HashMap<>();
+        userData.put("username", user.getUserName());
+        userData.put("email", user.getEmail());
+
+        return ResponseEntity.ok(userData);
     }
+    // <--
 
     @DeleteMapping("/admin/delete-user/{id}")
     public @ResponseBody String deleteUser(@PathVariable Integer id, HttpSession session) {
@@ -325,4 +394,58 @@ public class userController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User not found"));
         }
     }
+
+    // jc -->
+    @PutMapping("/updateUsername")
+    public ResponseEntity<Map<String, String>> updateUsername(@RequestBody Map<String, String> data) {
+        Integer userId = Integer.parseInt(data.get("userId"));
+        String newUsername = data.get("newUsername");
+
+        String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, userId);
+        if (count == null || count == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        String updateSQL = "UPDATE user SET user_name = ? WHERE id = ?";
+        jdbcTemplate.update(updateSQL, newUsername, userId);
+
+        return ResponseEntity.ok(Map.of("message", "Username updated successfully"));
+    }
+
+    @PutMapping("/updatePassword")
+    public ResponseEntity<Map<String, String>> updatePassword(@RequestBody Map<String, String> data) {
+        Integer userId = Integer.parseInt(data.get("userId"));
+        String newPassword = data.get("newPassword");
+
+        String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, userId);
+        if (count == null || count == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String hashed = encoder.encode(newPassword);
+
+        String updateSQL = "UPDATE user SET password = ? WHERE id = ?";
+        jdbcTemplate.update(updateSQL, hashed, userId);
+
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public @ResponseBody String deleteUser(@PathVariable Integer id) {
+        String checkSQL = "SELECT COUNT(*) FROM user WHERE id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSQL, Integer.class, id);
+
+        if (count == null || count == 0) {
+            return "Error: User not found.";
+        }
+
+        String deleteSQL = "DELETE FROM user WHERE id = ?";
+        jdbcTemplate.update(deleteSQL, id);
+
+        return "User deleted successfully.";
+    }
+    // <--
 }
