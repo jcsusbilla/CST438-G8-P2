@@ -15,6 +15,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.session.web.http.CookieHttpSessionIdResolver;
+import org.springframework.session.web.http.CookieSerializer;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -92,5 +95,24 @@ public class SecurityConfig {
     }
 // test
 
+
+    // Add this new bean for cookie configuration
+    @Bean
+    public CookieSerializer cookieSerializer() {
+        DefaultCookieSerializer serializer = new DefaultCookieSerializer();
+        serializer.setSameSite("None");
+        serializer.setUseSecureCookie(true);
+        serializer.setCookieName("SESSION");
+        serializer.setCookiePath("/");
+        return serializer;
+    }
+
+    // If you're using Spring Session, add this bean too
+    @Bean
+    public CookieHttpSessionIdResolver httpSessionIdResolver() {
+        CookieHttpSessionIdResolver resolver = new CookieHttpSessionIdResolver();
+        resolver.setCookieSerializer(cookieSerializer());
+        return resolver;
+    }
 
 }
