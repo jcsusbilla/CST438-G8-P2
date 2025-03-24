@@ -158,6 +158,39 @@ public class userController {
         }
     }
 
+    @GetMapping("/oauth2/success")
+    public ResponseEntity<Map<String, Object>> oauthSuccess(HttpSession session, @AuthenticationPrincipal OAuth2User oauth2User) {
+        if (oauth2User == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Authentication failed"));
+        }
+
+        String email = oauth2User.getAttribute("email");
+        Optional<User> userOptional = userRepository.findByEmail(email);
+
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
+
+        User user = userOptional.get();
+
+        // Set session attributes
+        session.setAttribute("userEmail", email);
+        session.setAttribute("userName", user.getUserName());
+        session.setAttribute("userRole", user.getRole().toString());
+        session.setAttribute("isLoggedIn", true);
+
+        return ResponseEntity.ok(Map.of(
+                "userId", user.getId(),
+                "email", email,
+                "userName", user.getUserName(),
+                "firstName", user.getFirstName(),
+                "lastName", user.getLastName(),
+                "role", user.getRole().toString()
+        ));
+    }
+
 
     //Just for my reference queryForMap() is only for 1 row. queryForList() is for multiple queries
     @PostMapping("/login")
@@ -215,7 +248,7 @@ public class userController {
     }
 
     @PostMapping("/register-google-user")
-    public ResponseEntity<?> registerGoogleUser(@RequestBody Map<String, String> userData) {
+    public ResponseEntity<?> registerGoogleUser(@RequestBody Map<String, String> userData, HttpSession session) {
         String email = userData.get("email");
         String firstName = userData.get("firstName");
         String lastName = userData.get("lastName");
@@ -226,31 +259,37 @@ public class userController {
 
         // Check if user already exists
         Optional<User> existingUser = userRepository.findByEmail(email);
+        User user;
 
         if (existingUser.isPresent()) {
-            return ResponseEntity.ok(Map.of(
-                    "userId", existingUser.get().getId(),
-                    "message", "User already exists"
-            ));
+            user = existingUser.get();
+        } else {
+            // Create username from email
+            String username = email.split("@")[0];
+
+            // Create a new user
+            User newUser = new User();
+            newUser.setUserName(username);
+            newUser.setEmail(email);
+            newUser.setFirstName(firstName != null ? firstName : "");
+            newUser.setLastName(lastName != null ? lastName : "");
+            newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
+            newUser.setRole(User.Role.USER);
+
+            user = userRepository.save(newUser);
         }
 
-        // Create username from email
-        String username = email.split("@")[0];
-
-        // Create a new user
-        User newUser = new User();
-        newUser.setUserName(username);
-        newUser.setEmail(email);
-        newUser.setFirstName(firstName != null ? firstName : "");
-        newUser.setLastName(lastName != null ? lastName : "");
-        newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
-        newUser.setRole(User.Role.USER);
-
-        userRepository.save(newUser);
+        // Set session attributes - THIS IS THE CRUCIAL PART
+        session.setAttribute("userEmail", email);
+        session.setAttribute("userName", user.getUserName());
+        session.setAttribute("userRole", user.getRole().toString());
+        session.setAttribute("isLoggedIn", true);
 
         return ResponseEntity.ok(Map.of(
-                "userId", newUser.getId(),
-                "message", "User registered successfully"
+                "userId", user.getId(),
+                "message", "User registered successfully",
+                "email", email,
+                "role", user.getRole().toString()
         ));
     }
 

@@ -12,9 +12,13 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 
 import java.util.Collections;
 import java.util.Optional;
+
 
 @Configuration
 @EnableWebSecurity
@@ -44,7 +48,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-
     private OAuth2User handleGoogleLogin(OAuth2UserRequest userRequest) {
         DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
         OAuth2User oAuth2User = delegate.loadUser(userRequest);
@@ -60,6 +63,7 @@ public class SecurityConfig {
 
         // Check if the user exists
         Optional<User> existingUser = userRepository.findByEmail(email);
+        User user;
 
         if (existingUser.isEmpty()) {
             // Create a new user with Google details
@@ -69,8 +73,20 @@ public class SecurityConfig {
             newUser.setFirstName(firstName);
             newUser.setLastName(lastName);
             newUser.setPassword(passwordEncoder.encode("oauth_dummy_password"));
+            newUser.setRole(User.Role.USER);
 
-            userRepository.save(newUser); // Save the new user
+            user = userRepository.save(newUser); // Save the new user
+        } else {
+            user = existingUser.get();
+        }
+
+        // Store the user info in the authentication context
+        // This will make it available to your controllers
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new OAuth2AuthenticationToken(oAuth2User, authentication.getAuthorities(),
+                            userRequest.getClientRegistration().getRegistrationId()));
         }
 
         return oAuth2User;
