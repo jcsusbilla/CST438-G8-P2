@@ -10,25 +10,27 @@ import jakarta.persistence.*;
 public class TierRanking {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Want Tier to be Restricted to S,A,B,C,D,F so used enum. Definitely had to look up @Enumerated annotation.
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Tier tier;
+    private String tier; // ✅ The ranking tier (S, A, B, C, D, F)
+    private String item; // ✅ The ranked item name
 
-    // item name
-    @Column(nullable = false)
-    private String item;
-
-    // I think that this is how I want to go about it. Each Ranking Belongs to a specific tier list
     @ManyToOne
     @JoinColumn(name = "tier_list_id", nullable = false)
-    private TierList tierList;
+    private TierList tierList; // ✅ Links this ranking to a TierList
 
+    // ✅ Default constructor (required by JPA)
+    public TierRanking() {}
 
-    // Getters and Setters
+    // ✅ Constructor for creating a new ranking
+    public TierRanking(String tier, String item, TierList tierList) {
+        this.tier = tier;
+        this.item = item;
+        this.tierList = tierList;
+    }
+
+    // ✅ Getters and Setters
     public Integer getId() {
         return id;
     }
@@ -37,11 +39,11 @@ public class TierRanking {
         this.id = id;
     }
 
-    public Tier getTier() {
+    public String getTier() {
         return tier;
     }
 
-    public void setTier(Tier tier) {
+    public void setTier(String tier) {
         this.tier = tier;
     }
 
@@ -59,9 +61,5 @@ public class TierRanking {
 
     public void setTierList(TierList tierList) {
         this.tierList = tierList;
-    }
-
-    public enum Tier {
-        S, A, B, C, D, F
     }
 }

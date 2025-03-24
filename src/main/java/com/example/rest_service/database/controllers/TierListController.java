@@ -1,15 +1,21 @@
+
 package com.example.rest_service.database.controllers;
 
 import com.example.rest_service.database.entities.TierList;
+import com.example.rest_service.database.entities.TierRanking;
 import com.example.rest_service.database.repositories.TierListRepository;
+import com.example.rest_service.database.repositories.TierRankingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;// maybe need this if we decide to pivot from ResponseBody
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import java.time.format.DateTimeParseException;
+import java.util.*;
+import java.util.stream.Collectors;
 
+@CrossOrigin(origins = "http://localhost:8081")
 @RestController
 @RequestMapping("/tierlists")
 public class TierListController {
@@ -29,72 +35,135 @@ public class TierListController {
      * If there is a given date convert it into localDate object
      * Else use the current date as a default
      **/
-    @PostMapping(path = "/add") // Map ONLY POST Requests
-    public @ResponseBody String addTierList(@RequestParam String title,
-                                            @RequestParam String subject,
-                                            @RequestParam(required = false) String weekStartDate) {
-        // if weekStartDate isn't null or an empty string convert it to a LocalDate Object
-        // else make startDate the current date
-        LocalDate startDate = (weekStartDate != null && !weekStartDate.isEmpty())
-                ? LocalDate.parse(weekStartDate)
-                : LocalDate.now();
 
-        // create the new Tier List for insertion
-        TierList newTierList = new TierList(title, subject, startDate);
-        tierListRepository.save(newTierList);
-        return "Tier List saved";
-    }
+    @Autowired
+    private TierRankingRepository tierRankingRepository;
+    @PostMapping(path = "/add")
+    public ResponseEntity<Map<String, String>> addTierList(@RequestBody TierListRequest request) {
+        Map<String, String> response = new HashMap<>();
 
+        try {
+            System.out.println("🎯 Received Rankings: " + request.getRankings());
+            LocalDate startDate = (request.getWeekStartDate() != null && !request.getWeekStartDate().isEmpty())
+                    ? LocalDate.parse(request.getWeekStartDate())
+                    : LocalDate.now();
 
-    // DELETE by id  with request Param
-    @DeleteMapping(path = "/delete")
-    public @ResponseBody String deleteTierListByID(@RequestParam Integer id) {
-        if (!tierListRepository.existsById(id)) {
-            return "Tier List does not exist";
+            // 1. Save the TierList
+            TierList newTierList = new TierList(request.getTitle(), request.getSubject(), startDate);
+            newTierList.setUserId(request.getUserId());
+            tierListRepository.save(newTierList);
+
+//            // 2. Save Rankings if present
+            if (request.getRankings() != null && !request.getRankings().isEmpty()) {
+                System.out.println("🎯 Received Rankings: " + request.getRankings());
+
+                for (Map<String, String> entry : request.getRankings()) {
+                    String tier = entry.get("tier");
+                    String item = entry.get("item");
+
+                    if (tier != null && item != null) {
+                        TierRanking ranking = new TierRanking(tier, item, newTierList);
+                        tierRankingRepository.save(ranking);
+                    } else {
+                        System.out.println("⚠️ Skipping invalid entry: " + entry);
+                    }
+                }
+            }
+//            if (request.getRankings() != null) {
+//                for (Map<String, String> entry : request.getRankings()) {
+//                    String tier = entry.get("tier");
+//                    String item = entry.get("item");
+//                    if (tier != null && item != null) {
+//                        TierRanking ranking = new TierRanking(tier, item, newTierList);
+//                        tierRankingRepository.save(ranking);
+//                    }
+//                }
+//            }
+
+            response.put("message", "Tier List saved successfully");
+            response.put("tierListId", String.valueOf(newTierList.getId()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (DateTimeParseException e) {
+            response.put("message", "Invalid date format. Please use YYYY-MM-DD.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            response.put("message", "An error occurred while saving the Tier List.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-
-        tierListRepository.deleteById(id);
-        return "Tier List deleted successfully";
     }
+//    @PostMapping(path = "/add")
+//    public ResponseEntity<Map<String, String>> addTierList(@RequestParam String title,
+//                                                           @RequestParam String subject,
+//                                                           @RequestParam(required = false) String weekStartDate) {
+//        Map<String, String> response = new HashMap<>();
+//
+//        try {
+//            LocalDate startDate = (weekStartDate != null && !weekStartDate.isEmpty())
+//                    ? LocalDate.parse(weekStartDate)
+//                    : LocalDate.now();
+//
+//            TierList newTierList = new TierList(title, subject, startDate);
+//            tierListRepository.save(newTierList);
+//
+//            response.put("message", "Tier List saved successfully");
+//            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+//        } catch (DateTimeParseException e) {
+//            response.put("message", "Invalid date format. Please use YYYY-MM-DD.");
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+//        } catch (Exception e) {
+//            response.put("message", "An error occurred while saving the Tier List.");
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//        }
+//    }
+
 
     // DELETE by id with PathVariable (i think this is the better way)
     @DeleteMapping(path = "/delete/{id}")
-    public @ResponseBody String deleteTierListByPathId(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, String>> deleteTierListByPathId(@PathVariable Integer id) {
+        Map<String, String> response = new HashMap<>();
+
         if (!tierListRepository.existsById(id)) {
-            return "Tier List does not exist";
+            response.put("message", "Tier List does not exist");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
-        tierListRepository.deleteById(id);
-        return "Tier List deleted successfully";
+        try {
+            tierListRepository.deleteById(id);
+            response.put("message", "Tier List deleted successfully");
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (Exception e) {
+            response.put("message", "An error occurred while deleting the Tier List.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 
-
     //UPDATE
+
     /**
      * This mapping finds the Tierlist you want to update by id
      * There are three optional parameters to modify here
-     *  String: title
-     *  String: subject
-     *  String: date
-     *
-     *  Any or none of these fields may be modified
-     * */
+     * String: title
+     * String: subject
+     * String: date
+     * <p>
+     * Any or none of these fields may be modified
+     */
     @PutMapping(path = "update/{id}")
-    public @ResponseBody String updateTierList(@PathVariable Integer id,
-                                               @RequestParam(required = false) String title,
-                                               @RequestParam(required = false) String subject,
-                                               @RequestParam(required = false) String date) {
+    public ResponseEntity<Map<String, String>> updateTierList(@PathVariable Integer id,
+                                                              @RequestParam(required = false) String title,
+                                                              @RequestParam(required = false) String subject,
+                                                              @RequestParam(required = false) String date) {
+        Map<String, String> response = new HashMap<>();
 
-        // This checks to see if the tierList id exists. if not optional is empty
+        // Check if the Tier List exists
         Optional<TierList> existingTierList = tierListRepository.findById(id);
 
         if (existingTierList.isPresent()) {
             TierList tierList = existingTierList.get();
-
-            // keeps track of whether or not an update has been made
             boolean update = false;
 
-            // Update only if parameter is given in request
+            // Update only if the parameter is provided
             if (title != null && !title.isEmpty()) {
                 tierList.setTitle(title);
                 update = true;
@@ -104,22 +173,28 @@ public class TierListController {
                 update = true;
             }
             if (date != null && !date.isEmpty()) {
-                tierList.setWeekStartDate(LocalDate.parse(date));
-                update = true;
+                try {
+                    tierList.setWeekStartDate(LocalDate.parse(date));
+                    update = true;
+                } catch (DateTimeParseException e) {
+                    response.put("message", "Invalid date format. Please use YYYY-MM-DD.");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                }
             }
 
             if (!update) {
-                return "Update Failed: No parameters selected for change!";
+                response.put("message", "Update Failed: No parameters selected for change!");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-
-
-            // Save after the update
+            // Save the updated Tier List
             tierListRepository.save(tierList);
+            response.put("message", "Tier List updated successfully.");
+            return ResponseEntity.status(HttpStatus.OK).body(response);
 
-            return "Tier List updated successfully.";
         } else {
-            throw new RuntimeException("Tier List not found with ID: " + id);
+            response.put("message", "Tier List not found with ID: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
@@ -127,49 +202,118 @@ public class TierListController {
     ///////////////////// GET REQUESTS ///////////////////////////////////////////////
 
     // GET all TierLists
-    @GetMapping(path = "/all")
-    public @ResponseBody Iterable<TierList> getAllTierLists() {
-        return tierListRepository.findAll();
+    @GetMapping("/all")
+    public ResponseEntity<List<TierList>> getAllTierLists() {
+        List<TierList> tierLists = (List<TierList>) tierListRepository.findAll();
+        return ResponseEntity.ok(tierLists);
     }
 
     // Get by ID using path variable
     @GetMapping("/{id}")
-    public TierList getTierListById(@PathVariable Integer id) {
-        return tierListRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tier List not found with id: " + id));
-    }
+    public ResponseEntity<Map<String, Object>> getTierListById(@PathVariable Integer id) {
+        Map<String, Object> response = new HashMap<>();
 
-    // Get TierList by Title (NEEDS TESTING)
-    @GetMapping(path = "title/{title}")
-    public @ResponseBody TierList getTierListByTitle(@PathVariable String title) {
-
-        // optional allows for null checks
-        // if tierList exists then optional contains it
-        // if it doesnt exist optional is empty
-        Optional<TierList> tierList = tierListRepository.findByTitle(title);
+        Optional<TierList> tierList = tierListRepository.findById(id);
 
         if (tierList.isPresent()) {
-
-            return tierList.get();
+            response.put("tierList", tierList.get());
+            return ResponseEntity.ok(response);
         } else {
-            throw new RuntimeException("Tier List not found with title: " + title);
+            response.put("message", "Tier List not found with id: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 
+
+    @GetMapping(path = "title/{title}")
+    public ResponseEntity<Map<String, Object>> getTierListByTitle(@PathVariable String title) {
+        Map<String, Object> response = new HashMap<>();
+
+        Optional<TierList> tierList = tierListRepository.findByTitle(title);
+
+        if (tierList.isPresent()) {
+            response.put("tierList", tierList.get());
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("message", "Tier List not found with title: " + title);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+
     // Get TierList by Subject (NEEDS TESTING)
     @GetMapping(path = "subject/{subject}")
-    public @ResponseBody TierList getTierListBySubject(@PathVariable String subject) {
+    public ResponseEntity<Map<String, Object>> getTierListBySubject(@PathVariable String subject) {
+        Map<String, Object> response = new HashMap<>();
+
         Optional<TierList> tierList = tierListRepository.findBySubject(subject);
 
         if (tierList.isPresent()) {
-            return tierList.get();
+            response.put("tierList", tierList.get());
+            return ResponseEntity.ok(response);
         } else {
-            throw new RuntimeException("Tier List not found with subject: " + subject);
+            response.put("message", "Tier List not found with subject: " + subject);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Map<String, Object>> getTierListsByUser(@PathVariable Integer userId) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Let JPA handle filtering directly
+            List<TierList> tierLists = tierListRepository.findByUserId(userId);
+
+            response.put("message", "Tier lists fetched successfully");
+            response.put("tierLists", tierLists);
+            response.put("count", tierLists.size());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "An error occurred while fetching tier lists");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
     // Should probably add one to get by date as well
+    @GetMapping("/user/{userId}/with-rankings")
+    public ResponseEntity<Map<String, Object>> getTierListsWithRankings(@PathVariable Integer userId) {
+        Map<String, Object> response = new HashMap<>();
 
+        try {
+            // ✅ Fetch all tier lists created by this user
+            List<TierList> tierLists = tierListRepository.findByUserId(userId);
+            List<Map<String, Object>> tierListData = new ArrayList<>();
+
+            for (TierList list : tierLists) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("id", list.getId());
+                data.put("title", list.getTitle());
+                data.put("subject", list.getSubject());
+
+                // ✅ Fetch raw rankings
+                List<TierRanking> rankings = tierRankingRepository.findByTierListId(list.getId());
+
+                // ✅ Map each TierRanking into a simple tier-item structure
+                List<Map<String, String>> rankingList = rankings.stream().map(r -> Map.of(
+                        "tier", r.getTier(),
+                        "item", r.getItem()
+                )).collect(Collectors.toList());
+
+                // ✅ Add to the response
+                data.put("rankings", rankingList);
+
+                tierListData.add(data);
+            }
+
+            response.put("tierLists", tierListData);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "Failed to retrieve tier lists");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 
     ///////////////////// GET REQUESTS END //////////////////////////////////////////
 

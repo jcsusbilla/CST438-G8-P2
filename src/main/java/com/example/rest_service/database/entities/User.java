@@ -38,11 +38,11 @@ public class User {
 
 
 
-    private String getFirstName(){
+    public String getFirstName(){
         return firstName;
     }
 
-    private String getLastName(){
+    public String getLastName(){
         return lastName;
     }
 
