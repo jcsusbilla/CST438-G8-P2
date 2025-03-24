@@ -449,32 +449,32 @@ public class userController {
         return role != null && role.equals("ADMIN");
     }
 
-    @GetMapping("/details")
-    public ResponseEntity<Map<String, String>> getUserDetails(@RequestParam(required = true) String email) {
-        if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid email provided."));
-        }
-
-        String sql = "SELECT user_name, first_name, last_name, role FROM user WHERE email = ?";
-        try {
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, email);
-            if (results.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("message", "User not found"));
-            }
-
-            Map<String, Object> userData = results.get(0);
-            return ResponseEntity.ok(Map.of(
-                    "userName", (String) userData.get("user_name"),
-                    "firstName", (String) userData.get("first_name"),
-                    "lastName", (String) userData.get("last_name"),
-                    "role", (String) userData.get("role")
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Error retrieving user details"));
-        }
-    }
+//    @GetMapping("/details")
+//    public ResponseEntity<Map<String, String>> getUserDetails(@RequestParam(required = true) String email) {
+//        if (email == null || email.trim().isEmpty()) {
+//            return ResponseEntity.badRequest().body(Map.of("message", "Invalid email provided."));
+//        }
+//
+//        String sql = "SELECT user_name, first_name, last_name, role FROM user WHERE email = ?";
+//        try {
+//            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, email);
+//            if (results.isEmpty()) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(Map.of("message", "User not found"));
+//            }
+//
+//            Map<String, Object> userData = results.get(0);
+//            return ResponseEntity.ok(Map.of(
+//                    "userName", (String) userData.get("user_name"),
+//                    "firstName", (String) userData.get("first_name"),
+//                    "lastName", (String) userData.get("last_name"),
+//                    "role", (String) userData.get("role")
+//            ));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(Map.of("message", "Error retrieving user details"));
+//        }
+//    }
 
     @GetMapping("/getUserId")
     public ResponseEntity<?> getUserIdByEmail(@RequestParam String email) {
@@ -538,6 +538,28 @@ public class userController {
         jdbcTemplate.update(deleteSQL, id);
 
         return "User deleted successfully.";
+    }
+
+    @GetMapping("/details")
+    public ResponseEntity<Map<String, Object>> getUserByEmail(@RequestParam String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+        if (user.isPresent()) {
+            User u = user.get();
+            Map<String, Object> response = new HashMap<>();
+
+            // ✅ MANUALLY add fields
+            response.put("id", u.getId()); // 👈 this is the key fix
+            response.put("userName", u.getUserName());
+            response.put("email", u.getEmail());
+            response.put("role", u.getRole());
+            response.put("firstName", u.getFirstName());
+            response.put("lastName", u.getLastName());
+
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
     }
     // <--
 }
