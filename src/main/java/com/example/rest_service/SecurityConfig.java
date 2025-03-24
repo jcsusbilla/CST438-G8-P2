@@ -81,7 +81,6 @@ public class SecurityConfig {
         }
 
         // Store the user info in the authentication context
-        // This will make it available to your controllers
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null) {
             SecurityContextHolder.getContext().setAuthentication(
